@@ -15,3 +15,4 @@
 **環境註記**：此任務在雲端容器（Python 3.12、uv 0.11）驗收；使用者 Mac 的 shell 當時連不上，需在 Mac 上再跑一次 `make setup` 確認（`uv.lock` 已附）。
 
 **Mac 驗收（2026-10-30）**：`make setup` 成功，import 檢查輸出 `ok`。
+| T02 docker-compose | ✅ 完成 | 2026-10-30 | 3 容器 running；qdrant 回 JSON；psql 回 1 |
