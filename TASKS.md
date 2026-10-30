@@ -588,7 +588,7 @@ def strip_think(text: str) -> str:  # 移除 <think>...</think>
 ```
 **細節**
 - 用 `openai` SDK，`timeout=settings.llm_timeout`，`tenacity` retry 2 次（只對連線錯誤）。
-- Qwen 系列：在 system prompt 結尾加 `/no_think`，並仍以 `strip_think` 防呆。
+- Qwen3.6：每次 chat 呼叫預設帶 `extra_body={"reasoning_effort": "none"}`（已實測：思考 token 為 0、延遲約 0.4 秒；`/no_think` 與 `chat_template_kwargs.enable_thinking` 皆無效）。`chat()` 提供 `think: bool = False` 參數，為 True 時才不帶此參數。仍以 `strip_think` 與去除前後空白（content 開頭可能有 `\n\n`）防呆。
 - `chat_json`：用 `response_format={"type":"json_object"}`；若 LM Studio 不支援則退回 prompt 要求「只輸出 JSON」並以正則抓第一個 `{...}`。
 
 **測試** `backend/tests/test_llm.py`

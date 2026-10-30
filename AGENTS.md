@@ -82,3 +82,4 @@ local_llm/
 | Postgres DB | `erp_poc`，schema `erp`（業務資料）、`app`（系統資料）|
 | backend port | 8000 |
 | 時區 | Asia/Taipei |
+| 關閉 Qwen 思考 | 每次 chat 呼叫都帶 `extra_body={"reasoning_effort": "none"}`；`/no_think`、`enable_thinking` 無效；思考內容在 `reasoning_content` 欄位，答案在 `content` |

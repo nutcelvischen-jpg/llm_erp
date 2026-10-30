@@ -19,6 +19,7 @@ dependencies = [
   "pandas>=2.2",
   "python-multipart>=0.0.9",
   "tenacity>=9.0",
+  "python-dotenv>=1.0",
 ]
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6"]
