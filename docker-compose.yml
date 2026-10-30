@@ -24,21 +24,6 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: erp_webui
-    ports: ["3000:8080"]
-    environment:
-      OPENAI_API_BASE_URL: http://host.docker.internal:8000/v1
-      OPENAI_API_KEY: poc
-      ENABLE_OLLAMA_API: "false"
-      WEBUI_AUTH: "false"
-      DEFAULT_LOCALE: zh-TW
-    extra_hosts: ["host.docker.internal:host-gateway"]
-    volumes:
-      - webui_data:/app/backend/data
-
 volumes:
   pgdata:
   qdrant_data:
-  webui_data:

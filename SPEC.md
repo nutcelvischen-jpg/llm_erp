@@ -64,7 +64,7 @@
 
 | 入口 | 技術 | 對象 | 情境 |
 |---|---|---|---|
-| **Web 對話工作台** | Next.js + shadcn/ui（或 Open WebUI 客製）| 財會、業務、管理層 | 主介面：對話 + 側欄顯示 SQL / 來源文件 / 圖表 |
+| **Web 對話工作台** | 自建單頁網頁（FastAPI 直接提供；PoC 採用）。正式版可升級為 Next.js + shadcn/ui| 財會、業務、管理層 | 主介面：對話 + 側欄顯示 SQL / 來源文件 / 圖表 |
 | **LINE 官方帳號** | LINE Messaging API → 內網 Webhook（反向代理）| 老闆、外勤業務、倉管 | 「幫我查 A 客戶欠多少」「這批貨到了沒」 |
 | **Excel / Google Sheets 外掛** | Office Add-in / Apps Script 呼叫內網 API | 財會、採購 | 選取儲存格 → 「解釋這張表的異常」「補齊料號描述」 |
 

@@ -133,8 +133,8 @@ make setup && uv run python -c "import fastapi, sqlglot, qdrant_client, docling;
 
 ---
 
-### T02 docker-compose（postgres + qdrant + open-webui）
-**目標**：一鍵啟動周邊服務。
+### T02 docker-compose（postgres + qdrant）
+**目標**：一鍵啟動周邊服務。（原本含 Open WebUI，已於改採自建網頁時移除。）
 **步驟**：建立 `docker-compose.yml`：
 ```yaml
 services:
@@ -163,24 +163,10 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: erp_webui
-    ports: ["3000:8080"]
-    environment:
-      OPENAI_API_BASE_URL: http://host.docker.internal:8000/v1
-      OPENAI_API_KEY: poc
-      ENABLE_OLLAMA_API: "false"
-      WEBUI_AUTH: "false"
-      DEFAULT_LOCALE: zh-TW
-    extra_hosts: ["host.docker.internal:host-gateway"]
-    volumes:
-      - webui_data:/app/backend/data
 
 volumes:
   pgdata:
   qdrant_data:
-  webui_data:
 ```
 注意：`./sql` 掛到 initdb 目錄，所以 **T05–T07 的 SQL 檔會在第一次啟動時自動執行**；若已啟動過，要 `docker compose down -v` 再 `up` 才會重跑。
 
@@ -675,27 +661,46 @@ class SqlAnswer:
 
 ---
 
-### T13b 最小聊天端點（提前的 T25-lite，讓 Open WebUI 提早可用）
-**目標**：在 Open WebUI（http://localhost:3000）問商業問題，得到表格與 SQL。此時只接 Text-to-SQL，RAG 與 Agent 路由在 T22–T25 再接上。
+### T13b 聊天網頁（自建單頁，讓介面提早可用）
+**決策**：介面採「自建單頁網頁」，由 FastAPI 直接提供；單一 HTML 檔 + 原生 JavaScript，不需要 Node 建置。不使用 Open WebUI、Streamlit、Next.js。
+**目標**：在瀏覽器（http://localhost:8000）用中文問商業問題，看到說明、表格與可展開的 SQL。此時只接 Text-to-SQL；RAG 與 Agent 路由在 T22–T25 再接上；圖表與視覺打磨在 T13c。
 **步驟**
-1. `backend/app/api/openai_compat.py`（用 `APIRouter`，在 `main.py` 以 `app.include_router` 掛上）：
-   - `GET /v1/models` → `{"object":"list","data":[{"id":"erp-assistant","object":"model","owned_by":"local"}]}`
-   - `POST /v1/chat/completions`：取 `messages` 中最後一則 `role=user` 的內容當 question，呼叫 `text2sql.run(question)`。
-     - `stream=false`：回標準 ChatCompletion JSON（`choices[0].message.content` 為 Markdown）。
-     - `stream=true`：SSE。先送一個內容為「🔎 正在查詢 ERP…\n\n」的 chunk，再送完整 Markdown 的 chunk，最後送 `data: [DONE]`。（不做 token 級串流。）
-   - 另有 Open WebUI 會送來的「產生標題／追問建議」請求（內容不是商業問題）：偵測到 messages 內容以 `### Task:` 開頭時，直接用 `llm.chat` 回答，不要走 Text-to-SQL。
-2. Markdown 組裝函式 `format_answer(ans: SqlAnswer) -> str`（獨立成純函式以便單元測試）：
-   - 失敗（`ans.error`）：「這次查詢失敗：{原因}」，並附上實際執行的 SQL（若有）。
-   - 成功：一段結論（`ans.explanation`）＋ Markdown 表格（最多 20 列，超過則加「僅顯示前 20 列，共 N 列」）＋ `<details><summary>查詢的 SQL</summary>` 包住的 SQL 程式碼區塊。
-   - 數字用千分位；日期用 `YYYY-MM-DD`；None 顯示為 `-`。
-3. `Makefile` 的 `dev` 目標改成 `uv run uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000`（Docker 內的 Open WebUI 需連到主機上的 backend；只綁 127.0.0.1 會連不上）。
-4. 完成後 `docker compose restart open-webui`，並在 Open WebUI 的「管理員設定 → 外部連線」確認 OpenAI 連線指向 `http://host.docker.internal:8000/v1`。
+1. `backend/app/api/chat.py`（`APIRouter`，在 `main.py` 以 `app.include_router` 掛上）：
+   - `POST /api/chat`，body `{"question": str, "session_id": str | null}`。`question` 去除前後空白後長度需為 1–500，否則 HTTP 422。
+   - 用一般 `def` 端點（FastAPI 會放進 threadpool），呼叫 `text2sql.run(question)`，回傳 JSON：`{"question","explanation","sql","columns","rows","row_count","attempts","error","latency_ms"}`（rows 最多 200 列）。`error` 非空時仍回 HTTP 200（錯誤是業務結果，不是伺服器故障）。
+2. `main.py`：用 `StaticFiles` 把 `backend/app/web/` 掛在 `/static`；`GET /` 以 `FileResponse` 回傳 `backend/app/web/index.html`。
+3. `backend/app/web/index.html`（單一檔案，原生 HTML/CSS/JS，**不得引用外部 CDN**）：
+   - 版面：上方標題「ERP 智慧助理」；中間是對話串；下方是輸入框（Enter 送出、Shift+Enter 換行）與送出鈕。對話串為空時，顯示 6 個範例問題按鈕（點一下即送出）：
+     1. 哪個客戶今年的營收比去年同期掉最多？
+     2. 目前逾期超過 60 天的應收帳款有哪些客戶？
+     3. 哪些料號超過 180 天沒有異動？壓了多少庫存金額？
+     4. 依目前待出貨的訂單，哪些料號會缺料？建議採購多少？
+     5. 今年的毛利率比去年同期好還是差？
+     6. 各供應商的準時交貨率
+   - 送出後顯示「思考中…」與已經過的秒數；失敗（HTTP 錯誤、逾時、`error` 非空）顯示紅色提示框，內容為錯誤訊息。
+   - 回答卡片：一句說明（`explanation`）、表格（最多顯示 20 列；數字加千分位；`null` 顯示 `-`；超過 20 列時加註「僅顯示前 20 列，共 N 列」）、可展開的「查詢的 SQL」區塊與「複製 SQL」按鈕、小字「耗時 X.X 秒・嘗試 N 次」。
+   - 安全：所有後端傳來的文字一律用 `textContent` 或 DOM API 建立節點，**禁止用 `innerHTML` 插入**使用者或模型產生的內容。
+   - 狀態只放在記憶體變數，不使用 localStorage。
+4. 移除 Open WebUI：`docker-compose.yml` 已刪除該服務；Mac 上執行 `docker compose up -d --remove-orphans` 停掉舊容器，`docker volume rm local_llm_webui_data` 清掉資料卷。`make dev` 維持綁 127.0.0.1；之後要給同網段的人看 Demo，才手動加 `--host 0.0.0.0`。
 
 **測試**
-- 單元（不需 LLM）：`format_answer` 的成功／失敗／超過 20 列／含 None 四個案例；`/v1/models` 回傳格式（用 FastAPI `TestClient`）。
-- `@pytest.mark.llm @pytest.mark.db`：`stream=false` 問「今年營收最高的 3 個客戶」，回應含 `|` 表格與 `<details>`；`stream=true` 回應最後一行為 `data: [DONE]`。
+- 單元（FastAPI `TestClient`，`text2sql.run` 以 monkeypatch 換成假的）：`GET /` 回 200 且含「ERP 智慧助理」；`POST /api/chat` 回傳含上述全部欄位；空字串與超過 500 字回 422；`error` 非空時仍為 200 且 JSON 帶 `error`；`latency_ms` 為整數。
+- 前端檢查（選配，`scripts/check_frontend.py`，需 playwright）：開頁面、攔截 `/api/chat` 回傳假資料，驗證表格列數、超過 20 列的提示、錯誤框、SQL 展開；回傳內容含 `<img src=x onerror=...>` 與 `<script>` 時**不會被執行**。
+- `@pytest.mark.llm @pytest.mark.db`：真實問「今年營收最高的 3 個客戶」，`row_count == 3`。
 
-**驗收**：`make dev` 後開啟 http://localhost:3000，模型下拉出現 `erp-assistant`；問「今年營收最高的三個客戶」，看到結論、表格與可展開的 SQL，且 15 秒內回完。
+**驗收**：`make dev` 後開啟 http://localhost:8000，點範例問題或輸入「今年營收最高的三個客戶」，15 秒內看到說明、表格與可展開的 SQL。
+
+---
+
+### T13c 介面打磨：圖表與證據面板
+**目標**：讓 Demo 畫面更有說服力。仍是單一 HTML 檔，圖表函式庫放 `backend/app/web/vendor/`（用 `npm pack echarts` 取得 `echarts.min.js`，不得引用 CDN）。
+**步驟**
+1. 版面改為左右兩欄：左側對話、右側「證據面板」，顯示最新一則回答的 SQL、完整表格（最多 200 列、可捲動）與圖表；窄螢幕時自動改為上下排列。
+2. 自動圖表：結果為「1 個文字／日期欄 + 1–3 個數值欄」時自動畫圖——第一欄為月份或日期用折線圖，否則用長條圖；圖表右上角可切換「圖／表」。不符合條件就不畫圖。
+3. 品牌可客製：顏色、公司名稱放在 CSS 變數與檔案開頭的 `CONFIG` 常數，改一處即可換成客戶的名稱與色系。
+4. 細節：載入中的骨架畫面、表格欄位可點擊排序、`null` 顯示 `-`、無障礙（按鈕有 aria-label）。
+5. 👍／👎 回饋按鈕：先放 UI，點擊暫時只在畫面標示；實際寫入 `app.feedback` 在 T25。
+**驗收**：問「最近 6 個月每個月的營收趨勢」會自動出折線圖；問「今年營收最高的 3 個客戶」出長條圖；右側面板同時顯示 SQL 與表格。
 
 ---
 
@@ -843,17 +848,15 @@ route
 
 ---
 
-### T25 OpenAI 相容端點 `api/openai_compat.py`
-**目標**：讓 Open WebUI 當成一般模型使用。（**T13b 已先做出基本版端點**，本任務改為：把 `text2sql.run` 換成 `agent.run_agent`、串接 audit、加上 `X-Session-Id`／history 處理與 `/v1/feedback`；`format_answer` 沿用 T13b。）
-**端點**
-- `GET /v1/models` → `[{"id":"erp-assistant","object":"model"}]`
-- `POST /v1/chat/completions`：取 `messages` 最後一則 user 為 question，其餘為 history；`session_id` 取 header `X-Session-Id` 或 hash(前 3 則訊息)。
-  - `stream=false`：回標準 ChatCompletion JSON。
-  - `stream=true`：SSE，先送「🔎 正在分析問題…」等進度 chunk（route 後送「📊 查詢 ERP…」或「📄 搜尋文件…」），最後把完整 markdown 一次送出，再送 `[DONE]`。（PoC 不做 token 級串流，避免複雜度。）
-- `POST /v1/feedback` `{audit_id, score, comment}`。
-**測試**：用 `httpx` 打 `/v1/models` 與 `stream=false` 的 chat（`@llm @db`）。
-
-**驗收**：`curl localhost:8000/v1/models` 正確；Open WebUI（http://localhost:3000）模型下拉出現 `erp-assistant`，問「今年營收最高的三個客戶」得到表格與 SQL。
+### T25 聊天 API 升級（`api/chat.py`）
+**目標**：把 T13b 的 `POST /api/chat` 從只接 Text-to-SQL，升級為接上 Agent。
+**變更**
+- 後端由 `text2sql.run` 換成 `agent.run_agent(question, history, session_id)`；body 新增 `history`（前幾輪 `{role, content}`，最多 6 輪）。
+- 回傳新增欄位：`route`（sql/docs/both/chat）、`sources`（文件來源：檔名、頁碼、片段）、`audit_id`、`answer`（綜合結論文字）。
+- 新增 `POST /api/feedback`：body `{audit_id, score, comment}`，寫入 `app.feedback`；網頁的 👍／👎 改為真的呼叫它。
+- 網頁：`sources` 顯示為可展開的來源列表（檔名＋頁碼＋片段）；`route` 為 docs 時不顯示表格。
+**測試**：TestClient 驗證新增欄位與 `/api/feedback`；`@llm @db` 三個 Demo 問題各打一次。
+**驗收**：網頁問「今年營收最高的三個客戶」與「鴻遠機械的合約，延遲交貨罰款怎麼算？」，前者出表格，後者出文字回答與來源。
 
 ---
 
@@ -895,7 +898,7 @@ route
 
 ### T30 Demo 開場語與範例問題
 - `backend/app/agent/prompts.py` 的 chat system prompt 加入公司簡介（台中精密零件公司、產品線、資料期間）。
-- 在 Open WebUI 設定 `erp-assistant` 模型的「建議提示」（Prompt Suggestions）6 題：
+- 更新 `backend/app/web/index.html` 的範例問題按鈕（`EXAMPLES` 常數）為下列 6 題（第 3、6 題為文件問題）：
   1. 今年到目前為止毛利跟去年同期比怎樣？哪個客戶掉最多？
   2. 哪些客戶的應收逾期超過 60 天？金額多少？
   3. 鴻遠機械的合約，延遲交貨罰款怎麼算？
@@ -903,7 +906,7 @@ route
   5. 依目前待出貨訂單，哪些料號會缺料？建議採購多少？
   6. 員工加班費怎麼計算？依據哪份規章？
 - 寫 `docs/DEMO_SCRIPT.md`：15 分鐘 Demo 流程、每題預期畫面、講稿重點、常見失敗的備援（例如先暖機、預跑一次）。
-**驗收**：6 題在 Open WebUI 全部正確回答，每題 < 15 秒；截圖存 `docs/screenshots/`。
+**驗收**：6 題在網頁（http://localhost:8000）全部正確回答，每題 < 15 秒；截圖存 `docs/screenshots/`。
 
 ---
 
@@ -932,6 +935,6 @@ route
 | Text-to-SQL 用了原始表名 | schema_doc 沒強調 | 在 prompt 明列「只能用這四個 View」，guard 會擋 |
 | 中文 BM25 全部零分 | 沒斷詞 | 確認 jieba 有套用在 ingest 與 query 兩端 |
 | Docling 第一次很慢 | 下載版面模型 | 正常，約 1 GB，之後快取 |
-| Open WebUI 看不到模型 | 打不到 host | 確認 `host.docker.internal` 與 backend 綁 `0.0.0.0` |
+| 網頁打不開或回 404 | backend 沒啟動或 port 被占用 | 確認 `make dev` 在跑，開 http://localhost:8000 |
 | 回答超過 30 秒 | 模型沒用 MLX／記憶體不足 swap | 檢查 LM Studio 引擎、`iogpu.wired_limit_mb` |
 | psql 中文 View 名稱報錯 | 沒加雙引號 | SQL 中 View 與欄位一律 `"v_銷售明細"` |

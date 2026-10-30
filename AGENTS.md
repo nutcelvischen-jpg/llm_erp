@@ -11,15 +11,15 @@
 
 ## 架構（PoC 版）
 ```
-Open WebUI (Docker :3000)
-   └─▶ backend FastAPI (host :8000, OpenAI 相容 /v1/chat/completions)
+瀏覽器 → http://localhost:8000（自建單頁網頁 backend/app/web/index.html，由 FastAPI 提供）
+   └─▶ backend FastAPI (host :8000：GET / 網頁、POST /api/chat)
           ├─▶ LM Studio (host :1234)  主模型 + embedding
           ├─▶ PostgreSQL (Docker :5432)  erp schema(假資料) + app schema(稽核/快取)
           ├─▶ Qdrant (Docker :6333)  文件向量(dense + sparse BM25)
           └─▶ reranker (backend 內 CPU, bge-reranker-v2-m3)
 ```
 - **backend 跑在 host（不進 Docker）**：避免 arm64 torch 映像問題，且直接打 `localhost:1234`。
-- Docker 只放 postgres、qdrant、open-webui。
+- Docker 只放 postgres、qdrant。介面是自建單頁網頁（不使用 Open WebUI / Streamlit / Next.js）。
 
 ## 硬性規則
 1. **語言**：Python 3.12，套件管理用 `uv`。所有指令寫進 `Makefile`。
@@ -33,6 +33,7 @@ Open WebUI (Docker :3000)
    - 不要安裝 TASKS.md 未列出的大型框架（LangChain、LlamaIndex 等）；本專案刻意用薄封裝
    - 不要修改 `erp` schema 的表結構來「讓測試通過」；改查詢或 View
    - 不要自行升級／降級 `pyproject.toml` 已鎖定的版本
+   - 前端網頁不得引用外部 CDN（地端環境可能沒有網路；需要的函式庫請放進 `backend/app/web/vendor/`）；後端回傳的文字一律用 `textContent` 或跳脫後插入，禁止 `innerHTML` 直接塞入使用者或模型產生的內容
 5. **錯誤處理**：對外部服務（LM Studio、Qdrant、Postgres）的呼叫都要有 timeout 與明確錯誤訊息。
 6. **繁體中文**：所有面向使用者的文字、prompt、欄位中文名稱使用台灣用語。
 7. **測試**：`pytest` 需在 10 秒內跑完單元測試；需要真實 LLM 的測試標記 `@pytest.mark.llm`，預設跳過（`make test-llm` 才跑）。
@@ -56,7 +57,9 @@ local_llm/
 │   │   ├── agent/
 │   │   │   ├── router.py  graph.py  prompts.py
 │   │   ├── api/
-│   │   │   ├── openai_compat.py  admin.py
+│   │   │   ├── chat.py  admin.py
+│   │   ├── web/
+│   │   │   ├── index.html       # 自建單頁網頁（原生 HTML/CSS/JS）
 │   │   ├── audit.py
 │   │   └── jobs/
 │   │       ├── dead_stock.py  scheduler.py  line_push.py
