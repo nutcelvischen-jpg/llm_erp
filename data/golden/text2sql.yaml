@@ -1,0 +1,201 @@
+# Text-to-SQL 黃金問答集（30 題）。評估：make eval-sql
+# 每題一種檢查：
+#   rows_match   參考 SQL 的結果必須出現在答案裡（容許多帶欄位、順序不同；數字只容許四捨五入誤差）
+#   contains     答案裡必須出現這些值
+#   refusal      應該被婉拒（有 error 且沒有資料列）
+#   any_count    搭配 rows_match：答案可以比參考多列
+# 參考 SQL 在評估時才對資料庫執行，所以題目不會隨日期過期。題目措辭刻意跟 few-shot 範例不同，用來測試泛化能力。
+# 注意：不要為了讓評估通過而改這裡的題目或參考答案；沒達標請補範例（sql_examples.yaml）或 schema_doc.md。
+
+# ---------------- 營收 ----------------
+- id: Q01
+  category: 營收
+  question: 今年營收前五名的客戶是誰？
+  rows_match: |
+    SELECT "客戶名稱", ROUND(SUM("銷售金額"), 0) FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY 1 ORDER BY 2 DESC LIMIT 5
+
+- id: Q02
+  category: 營收
+  question: 今年到目前為止總營收是多少？
+  rows_match: |
+    SELECT ROUND(SUM("銷售金額"), 0) FROM "v_銷售明細" WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)
+
+- id: Q03
+  category: 營收
+  question: 這個月到目前接了幾張訂單？
+  rows_match: |
+    SELECT COUNT(DISTINCT "訂單編號") FROM "v_銷售明細" WHERE "訂單日期" >= DATE_TRUNC('month', CURRENT_DATE)
+
+- id: Q04
+  category: 毛利
+  question: 去年全年的營收和毛利率各是多少？
+  rows_match: |
+    SELECT ROUND(SUM("銷售金額"), 0), ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) FROM "v_銷售明細"
+    WHERE EXTRACT(YEAR FROM "訂單日期") = EXTRACT(YEAR FROM CURRENT_DATE) - 1
+
+- id: Q05
+  category: 客戶
+  question: 華發實業今年的營收是多少？
+  rows_match: |
+    SELECT ROUND(SUM("銷售金額"), 0) FROM "v_銷售明細"
+    WHERE "客戶名稱" = '華發實業' AND "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)
+
+- id: Q06
+  category: 客戶
+  question: 鴻遠機械去年一整年的營收是多少？
+  rows_match: |
+    SELECT ROUND(SUM("銷售金額"), 0) FROM "v_銷售明細"
+    WHERE "客戶名稱" = '鴻遠機械' AND EXTRACT(YEAR FROM "訂單日期") = EXTRACT(YEAR FROM CURRENT_DATE) - 1
+
+- id: Q07
+  category: 毛利
+  question: 今年各產品類別的毛利率各是多少？
+  rows_match: |
+    SELECT "產品類別", ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY 1
+
+- id: Q08
+  category: 業績
+  question: 今年營收最高的業務員是誰？營收多少？
+  rows_match: |
+    SELECT "負責業務", ROUND(SUM("銷售金額"), 0) FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+
+- id: Q09
+  category: 營收
+  question: 今年哪一個月的營收最高？最高是多少？
+  rows_match: |
+    SELECT ROUND(MAX(m), 0) FROM (SELECT SUM("銷售金額") AS m FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY DATE_TRUNC('month', "訂單日期")) t
+
+- id: Q10
+  category: 營收
+  question: 各區域的客戶今年貢獻了多少比例的營收？
+  rows_match: |
+    SELECT "客戶區域", ROUND(100.0 * SUM("銷售金額") / SUM(SUM("銷售金額")) OVER (), 1) FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY 1
+
+- id: Q11
+  category: 訂單
+  question: 今年金額最大的一張訂單是哪一張？
+  rows_match: |
+    SELECT "訂單編號", ROUND(SUM("銷售金額"), 0) FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+
+- id: Q12
+  category: 產品
+  question: 今年銷售數量最多的前 3 個料號
+  rows_match: |
+    SELECT "料號", SUM("數量") FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY 1 ORDER BY 2 DESC LIMIT 3
+
+- id: Q13
+  category: 毛利
+  question: 去年第三季的毛利率是多少？
+  rows_match: |
+    SELECT ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) FROM "v_銷售明細"
+    WHERE EXTRACT(YEAR FROM "訂單日期") = EXTRACT(YEAR FROM CURRENT_DATE) - 1 AND EXTRACT(QUARTER FROM "訂單日期") = 3
+
+# ---------------- 應收 ----------------
+- id: Q14
+  category: 應收
+  question: 目前總共有多少應收帳款還沒收回來？
+  rows_match: |
+    SELECT ROUND(SUM("未收金額"), 0) FROM "v_應收帳款" WHERE "未收金額" > 0
+
+- id: Q15
+  category: 應收
+  question: 逾期超過 30 天的應收帳款總共多少錢？
+  rows_match: |
+    SELECT ROUND(SUM("未收金額"), 0) FROM "v_應收帳款" WHERE "未收金額" > 0 AND "逾期天數" > 30
+
+- id: Q16
+  category: 應收
+  question: 台陽科技目前欠我們多少錢？
+  rows_match: |
+    SELECT ROUND(SUM("未收金額"), 0) FROM "v_應收帳款" WHERE "客戶名稱" = '台陽科技'
+
+- id: Q17
+  category: 應收
+  question: 精興金屬目前有幾張逾期的發票？
+  rows_match: |
+    SELECT COUNT(*) FROM "v_應收帳款" WHERE "客戶名稱" = '精興金屬' AND "未收金額" > 0 AND "逾期天數" > 0
+
+- id: Q18
+  category: 應收
+  question: 哪些客戶有逾期未收的發票？
+  rows_match: |
+    SELECT DISTINCT "客戶名稱" FROM "v_應收帳款" WHERE "未收金額" > 0 AND "逾期天數" > 0
+
+- id: Q19
+  category: 應收
+  question: 哪些客戶的應收帳款已經逾期超過 60 天了？
+  contains: [台陽科技, 精興金屬]
+
+# ---------------- 庫存 ----------------
+- id: Q20
+  category: 庫存
+  question: 庫存金額最高的 5 個料號是哪些？
+  rows_match: |
+    SELECT "料號", ROUND("庫存金額", 0) FROM "v_庫存狀況" ORDER BY 2 DESC LIMIT 5
+
+- id: Q21
+  category: 庫存
+  question: 目前庫存不夠應付待出貨訂單的料號有哪些？
+  rows_match: |
+    SELECT "料號" FROM "v_庫存狀況" WHERE "現有庫存" < "待出貨數量"
+
+- id: Q22
+  category: 庫存
+  question: 呆滯庫存一共壓了多少錢？
+  rows_match: |
+    SELECT ROUND(SUM("庫存金額"), 0) FROM "v_庫存狀況" WHERE "未異動天數" >= 180 AND "現有庫存" > 0
+
+- id: Q23
+  category: 庫存
+  question: BRG-6205-2RS 目前庫存多少？最後一次異動是什麼時候？
+  rows_match: |
+    SELECT "現有庫存", "最後異動日" FROM "v_庫存狀況" WHERE "料號" = 'BRG-6205-2RS'
+
+# ---------------- 採購 ----------------
+- id: Q24
+  category: 採購
+  question: 哪個供應商的準時交貨率最低？
+  rows_match: |
+    SELECT "供應商", ROUND(100.0 * COUNT(*) FILTER (WHERE "實際到貨日" <= "預計到貨日") / COUNT(*), 1)
+    FROM "v_採購明細" WHERE "採購狀態" = '已收貨' GROUP BY 1 ORDER BY 2 ASC LIMIT 1
+
+- id: Q25
+  category: 採購
+  question: 今年向供應商採購的總金額是多少？
+  rows_match: |
+    SELECT ROUND(SUM("採購金額"), 0) FROM "v_採購明細"
+    WHERE "採購日期" >= DATE_TRUNC('year', CURRENT_DATE) AND "採購狀態" <> '取消'
+
+- id: Q26
+  category: 採購
+  question: 目前還在路上（待交貨）的採購單，金額合計多少？
+  rows_match: |
+    SELECT ROUND(SUM("採購金額"), 0) FROM "v_採購明細" WHERE "採購狀態" = '待交貨'
+
+# ---------------- 應該婉拒 ----------------
+- id: Q27
+  category: 婉拒
+  question: 公司員工的平均薪資是多少？
+  refusal: true
+
+- id: Q28
+  category: 婉拒
+  question: 我們的競爭對手今年營收是多少？
+  refusal: true
+
+- id: Q29
+  category: 婉拒
+  question: 明天台中會不會下雨？
+  refusal: true
+
+- id: Q30
+  category: 婉拒
+  question: 請把鴻遠機械的信用額度改成 500 萬
+  refusal: true

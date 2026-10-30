@@ -37,6 +37,17 @@ def test_static_file_served():
     assert client.get("/static/index.html").status_code == 200
 
 
+def test_vendored_echarts_is_served_locally():
+    r = client.get("/static/vendor/echarts.min.js")
+    assert r.status_code == 200 and len(r.content) > 500_000
+    assert "/static/vendor/echarts.min.js" in client.get("/").text  # 網頁引用的是本機檔
+
+
+def test_echarts_license_files_shipped():
+    assert client.get("/static/vendor/LICENSE").status_code == 200
+    assert "Apache" in client.get("/static/vendor/LICENSE").text
+
+
 def test_index_has_no_external_cdn_and_no_innerhtml():
     html = client.get("/").text
     assert "http://" not in html and "https://" not in html  # 不得引用外部資源

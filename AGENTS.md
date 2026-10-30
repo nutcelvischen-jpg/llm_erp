@@ -13,6 +13,7 @@
 ```
 瀏覽器 → http://localhost:8000（自建單頁網頁 backend/app/web/index.html，由 FastAPI 提供）
    └─▶ backend FastAPI (host :8000：GET / 網頁、POST /api/chat)
+          ├─▶ catalog 模板查詢（LLM 只做意圖辨識與看結果回覆）
           ├─▶ LM Studio (host :1234)  主模型 + embedding
           ├─▶ PostgreSQL (Docker :5432)  erp schema(假資料) + app schema(稽核/快取)
           ├─▶ Qdrant (Docker :6333)  文件向量(dense + sparse BM25)
@@ -29,6 +30,8 @@
    - `git add -A && git commit -m "T<編號>: <任務名>"`
 4. **禁止事項**
    - 不要把 LLM 產生的 SQL 直接執行，一律經過 `sql_guard.validate()`
+   - **LLM 不得決定要執行的 SQL 字串（模板優先）**：預設由程式寫死的參數化模板執行；日期、名稱比對、欄位／排序白名單都由程式處理；值一律用 `:name` 綁定參數，不用字串拼接。只有管理員開啟 `ALLOW_AI_FALLBACK` 時才可走 Text-to-SQL，且回答必須標示「AI 即時產生」
+   - LLM 回覆中的數字必須能在查詢結果或程式算出的 facts 中找到；找不到就改用固定句型，不得顯示
    - 不要在程式碼寫死 API key、密碼；全部讀 `.env`
    - 不要安裝 TASKS.md 未列出的大型框架（LangChain、LlamaIndex 等）；本專案刻意用薄封裝
    - 不要修改 `erp` schema 的表結構來「讓測試通過」；改查詢或 View
@@ -51,7 +54,9 @@ local_llm/
 │   │   ├── reranker.py
 │   │   ├── db.py              # SQLAlchemy engine
 │   │   ├── sql_guard.py
-│   │   ├── text2sql.py
+│   │   ├── text2sql.py        # AI 產生 SQL（兜底，預設關閉）
+│   │   ├── catalog/           # 模板優先：base.py periods.py entities.py registry.py intent.py answer.py runner.py
+│   │   │   ├── templates/     # sales.py receivable.py inventory.py purchasing.py
 │   │   ├── rag/
 │   │   │   ├── parse.py  chunk.py  ingest.py  retrieve.py  answer.py
 │   │   ├── agent/

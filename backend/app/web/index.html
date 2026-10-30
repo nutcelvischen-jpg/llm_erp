@@ -7,7 +7,7 @@
 <style>
   :root {
     --brand: #0f4c81;
-    --brand-soft: #e8f0fa;
+    --brand-soft: color-mix(in srgb, var(--brand) 10%, #fff);
     --ink: #1b2430;
     --muted: #6b7686;
     --line: #dde3ec;
@@ -24,97 +24,133 @@
     background: var(--bg); color: var(--ink);
     font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   }
-  header {
-    background: var(--brand); color: #fff; padding: 14px 24px;
-    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
-  }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+  header { background: var(--brand); color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
   header h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .02em; }
   header p { margin: 0; font-size: 13px; opacity: .85; }
 
-  #chat { flex: 1; overflow-y: auto; padding: 22px 16px 8px; }
-  .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .layout { flex: 1; display: flex; min-height: 0; }
+  .chat-col { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+  .wide .chat-col { flex: 0 0 44%; max-width: 640px; border-right: 1px solid var(--line); }
+  #chat { flex: 1; overflow-y: auto; padding: 20px 16px 8px; }
+  .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 
-  .welcome { text-align: center; padding: 28px 0 4px; }
+  /* ---- 右側證據面板（只有寬螢幕才會出現） ---- */
+  .panel { display: none; flex: 1; min-width: 0; overflow-y: auto; padding: 20px 22px 28px; background: var(--bg); }
+  .wide .panel { display: block; }
+  .panel-head { margin: 0 0 14px; }
+  .panel-head h2 { margin: 0; font-size: 16px; color: var(--brand); }
+  .panel-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); word-break: break-word; }
+  .panel-empty { margin-top: 70px; text-align: center; color: var(--muted); }
+  .panel-empty b { display: block; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
+  .section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+  .section h3 { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-weight: 600; }
+
+  .welcome { text-align: center; padding: 24px 0 4px; }
   .welcome h2 { margin: 0 0 6px; font-size: 22px; }
   .welcome p { margin: 0 0 18px; color: var(--muted); }
-  .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; text-align: left; }
-  .chip {
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    padding: 12px 14px; font: inherit; color: var(--ink); cursor: pointer; text-align: left;
-    transition: border-color .15s, box-shadow .15s, transform .15s;
-  }
+  .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; text-align: left; }
+  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--ink); cursor: pointer; text-align: left;
+    transition: border-color .15s, box-shadow .15s, transform .15s; }
   .chip:hover:not(:disabled) { border-color: var(--brand); box-shadow: 0 2px 10px rgba(15,76,129,.12); transform: translateY(-1px); }
   .chip:disabled { opacity: .55; cursor: not-allowed; }
 
-  .msg-user { align-self: flex-end; max-width: 80%; background: var(--brand); color: #fff;
+  .msg-user { align-self: flex-end; max-width: 82%; background: var(--brand); color: #fff;
     padding: 10px 16px; border-radius: 18px 18px 4px 18px; white-space: pre-wrap; word-break: break-word; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 16px 18px; box-shadow: 0 1px 3px rgba(20,30,50,.05); max-width: 100%; }
-  .explain { margin: 0 0 12px; font-weight: 600; }
+    padding: 15px 17px; box-shadow: 0 1px 3px rgba(20,30,50,.05); max-width: 100%; }
+  .wide .card.answer { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .wide .card.answer:hover { border-color: #b9c6d8; }
+  .card.active { border-color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 18%, transparent); }
+  .explain { margin: 0 0 10px; font-weight: 600; }
   .empty { color: var(--muted); margin: 0; }
+  .hintline { margin: 8px 2px 0; font-size: 13px; color: var(--brand); }
 
-  .table-box { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .table-box { overflow: auto; max-height: 380px; border: 1px solid var(--line); border-radius: 10px; }
+  .card .table-box { max-height: 260px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: left; }
-  th { background: var(--brand-soft); color: var(--brand); font-weight: 650; position: sticky; top: 0; }
+  th, td { padding: 7px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: left; }
+  th { background: var(--brand-soft); color: var(--brand); font-weight: 650; position: sticky; top: 0; padding: 0; }
+  th button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 12px; cursor: pointer; text-align: inherit; }
+  th button:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+  th button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .arrow { display: inline-block; width: 1em; color: var(--brand); font-size: 11px; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tbody tr:nth-child(even) td { background: #fafbfd; }
   tbody tr:last-child td { border-bottom: none; }
   .note { margin: 8px 2px 0; font-size: 13px; color: var(--muted); }
 
+  .chart { width: 100%; height: 300px; }
   details { margin-top: 12px; }
+  .section details { margin-top: 0; }
   summary { cursor: pointer; color: var(--brand); font-size: 14px; user-select: none; }
   .sql-box { position: relative; margin-top: 8px; }
   pre { margin: 0; padding: 14px 16px; background: #0f1b2d; color: #dbe7f7; border-radius: 10px;
     overflow-x: auto; font: 13px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
-  .copy { position: absolute; top: 8px; right: 8px; font: 12px inherit; padding: 4px 10px; border-radius: 6px;
+  .copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 4px 10px; border-radius: 6px;
     border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }
   .copy:hover { background: rgba(255,255,255,.22); }
-  .meta { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+
+  .foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .meta { margin: 0; font-size: 12px; color: var(--muted); flex: 1; min-width: 160px; }
+  .fb { border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 999px; padding: 2px 11px; font-size: 12px; cursor: pointer; }
+  .fb:hover { border-color: var(--brand); color: var(--brand); }
+  .fb[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); font-weight: 600; }
 
   .error { background: var(--danger-soft); border: 1px solid #f3c1bd; color: var(--danger);
     border-radius: 10px; padding: 12px 14px; font-weight: 600; word-break: break-word; }
 
   .pending { display: flex; align-items: center; gap: 10px; color: var(--muted); }
-  .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--brand);
-    border-radius: 50%; animation: spin .8s linear infinite; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .skeleton { border-radius: 10px; margin-bottom: 14px; background: linear-gradient(90deg, #e9edf3 25%, #f6f8fb 37%, #e9edf3 63%); background-size: 400% 100%; animation: shimmer 1.3s ease infinite; }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 
   footer { background: var(--bg); padding: 8px 16px 14px; }
   .composer { max-width: 920px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end;
-    background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 8px 8px 8px 16px;
-    box-shadow: 0 2px 12px rgba(20,30,50,.06); }
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 8px 8px 8px 16px; box-shadow: 0 2px 12px rgba(20,30,50,.06); }
   .composer:focus-within { border-color: var(--brand); }
-  textarea { flex: 1; resize: none; border: none; outline: none; font: inherit; color: var(--ink);
-    background: transparent; max-height: 160px; padding: 6px 0; }
-  #send { border: none; background: var(--brand); color: #fff; font: inherit; font-weight: 600;
-    padding: 8px 20px; border-radius: 10px; cursor: pointer; }
+  textarea:focus-visible { outline: none; }  /* 外框由 .composer:focus-within 負責，避免雙層框線 */
+  textarea { flex: 1; resize: none; border: none; outline: none; font: inherit; color: var(--ink); background: transparent; max-height: 160px; padding: 6px 0; }
+  #send { border: none; background: var(--brand); color: #fff; font-weight: 600; padding: 8px 20px; border-radius: 10px; cursor: pointer; }
   #send:disabled { background: #9db3cc; cursor: not-allowed; }
   .hint { max-width: 920px; margin: 6px auto 0; font-size: 12px; color: var(--muted); text-align: center; }
+  @media (prefers-reduced-motion: reduce) { .spinner, .skeleton { animation: none; } .chip { transition: none; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>ERP 智慧助理</h1>
-  <p>用中文問 ERP 資料，全程在公司內網處理，資料不外流</p>
+  <h1 id="brandName">ERP 智慧助理</h1>
+  <p id="brandTag">用中文問 ERP 資料，全程在公司內網處理，資料不外流</p>
 </header>
 
-<main id="chat" role="log" aria-live="polite">
-  <div class="wrap" id="thread"></div>
-</main>
+<div class="layout" id="layout">
+  <section class="chat-col">
+    <main id="chat" role="log" aria-live="polite"><div class="wrap" id="thread"></div></main>
+    <footer>
+      <form class="composer" id="form" autocomplete="off">
+        <textarea id="input" rows="1" placeholder="輸入問題，例如：今年營收最高的三個客戶" aria-label="輸入問題"></textarea>
+        <button id="send" type="submit" aria-label="送出問題">送出</button>
+      </form>
+      <p class="hint">查詢由 AI 產生 SQL，並在唯讀資料庫執行；重要決策請以展開的 SQL 與原始資料為準。</p>
+    </footer>
+  </section>
+  <aside class="panel" id="panel" aria-label="分析結果"></aside>
+</div>
 
-<footer>
-  <form class="composer" id="form" autocomplete="off">
-    <textarea id="input" rows="1" placeholder="輸入問題，例如：今年營收最高的三個客戶" aria-label="輸入問題"></textarea>
-    <button id="send" type="submit" aria-label="送出問題">送出</button>
-  </form>
-  <p class="hint">查詢由 AI 產生 SQL，並在唯讀資料庫執行；重要決策請以展開的 SQL 與原始資料為準。</p>
-</footer>
-
+<script src="/static/vendor/echarts.min.js"></script>
 <script>
 "use strict";
-// ---- 可客製的設定（T13c 會改成品牌化） ----
+// ---- 可客製的設定：換公司名稱、色系、範例問題，只要改這裡 ----
 const CONFIG = {
+  brand: {
+    name: "ERP 智慧助理",
+    tagline: "用中文問 ERP 資料，全程在公司內網處理，資料不外流",
+    color: "#0f4c81",
+    palette: ["#0f4c81", "#2a9d8f", "#e9a23b", "#d1495b", "#7a5ea8", "#5b8def"],
+  },
   examples: [
     "哪個客戶今年的營收比去年同期掉最多？",
     "目前逾期超過 60 天的應收帳款有哪些客戶？",
@@ -123,15 +159,25 @@ const CONFIG = {
     "今年的毛利率比去年同期好還是差？",
     "各供應商的準時交貨率",
   ],
-  maxTableRows: 20,
+  previewRows: 5,        // 寬螢幕：對話卡片內的預覽列數
+  inlineRows: 20,        // 窄螢幕：卡片內完整表格的列數上限
+  panelRows: 200,        // 右側面板的列數上限
+  wideBreakpoint: 1000,  // 螢幕寬度達此值才顯示右側面板
   requestTimeoutMs: 180000,
 };
 
 const $ = (id) => document.getElementById(id);
-const thread = $("thread"), chatBox = $("chat"), input = $("input"), sendBtn = $("send"), form = $("form");
-let busy = false;
+const thread = $("thread"), chatBox = $("chat"), input = $("input"), sendBtn = $("send"), form = $("form"), panel = $("panel"), layout = $("layout");
+const wideQuery = window.matchMedia(`(min-width: ${CONFIG.wideBreakpoint}px)`);
+const entries = [];        // 每則回答 {data, card, question}
+let activeIdx = -1, busy = false, liveCharts = [];
 
-// 建立節點的小工具：文字一律用 textContent，絕不使用 innerHTML
+document.title = CONFIG.brand.name;
+$("brandName").textContent = CONFIG.brand.name;
+$("brandTag").textContent = CONFIG.brand.tagline;
+document.documentElement.style.setProperty("--brand", CONFIG.brand.color);
+
+// 建立節點：文字一律用 textContent，絕不使用 innerHTML
 function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
@@ -142,6 +188,7 @@ function el(tag, props = {}, children = []) {
   for (const c of [].concat(children)) node.append(c);
   return node;
 }
+const isWide = () => wideQuery.matches;
 const scrollDown = () => { chatBox.scrollTop = chatBox.scrollHeight; };
 const NO_SEPARATOR_COLUMNS = /^(年|年度|年份|季|月|月份)$/;
 
@@ -154,51 +201,211 @@ function fmt(v, col) {
   if (typeof v === "boolean") return v ? "是" : "否";
   return String(v);
 }
+const isNumericCol = (rows, i) => rows.some((r) => r[i] !== null) && rows.every((r) => r[i] === null || typeof r[i] === "number");
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-function renderTable(columns, rows, rowCount) {
-  const shown = rows.slice(0, CONFIG.maxTableRows);
-  const isNum = columns.map((_, i) => rows.some((r) => r[i] !== null) && rows.every((r) => r[i] === null || typeof r[i] === "number"));
-  const head = el("tr", {}, columns.map((c, i) => el("th", { class: isNum[i] ? "num" : "", text: c })));
-  const body = shown.map((r) => el("tr", {}, r.map((v, i) => el("td", { class: isNum[i] ? "num" : "", text: fmt(v, columns[i]) }))));
-  const box = el("div", { class: "table-box" }, el("table", {}, [el("thead", {}, head), el("tbody", {}, body)]));
+// ---------------------------------------------------------------- 表格（可點欄位標題排序）
+function buildTable(columns, rows, limit, total) {
+  const numCols = columns.map((_, i) => isNumericCol(rows, i));
+  const sort = { col: -1, dir: 1 };
+  const tbody = el("tbody");
+  const arrows = [];
+  const head = el("tr", {}, columns.map((c, i) => {
+    const arrow = el("span", { class: "arrow", "aria-hidden": "true" });
+    arrows.push(arrow);
+    const btn = el("button", { type: "button", "aria-label": `依「${c}」排序` }, [document.createTextNode(c + " "), arrow]);
+    btn.addEventListener("click", () => {
+      if (sort.col === i) { if (sort.dir === 1) sort.dir = -1; else { sort.col = -1; sort.dir = 1; } } else { sort.col = i; sort.dir = 1; }
+      draw();
+    });
+    return el("th", { class: numCols[i] ? "num" : "" }, btn);
+  }));
+
+  function draw() {
+    let data = rows;
+    if (sort.col >= 0) {
+      const c = sort.col;
+      data = [...rows].sort((a, b) => {
+        const x = a[c], y = b[c];
+        if (x === null || x === undefined) return (y === null || y === undefined) ? 0 : 1;   // 空值永遠排最後
+        if (y === null || y === undefined) return -1;
+        const r = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "zh-TW");
+        return r * sort.dir;
+      });
+    }
+    arrows.forEach((a, i) => { a.textContent = i === sort.col ? (sort.dir === 1 ? "▲" : "▼") : ""; });
+    tbody.replaceChildren(...data.slice(0, limit).map((r) => el("tr", {}, r.map((v, i) => el("td", { class: numCols[i] ? "num" : "", text: fmt(v, columns[i]) })))));
+  }
+  draw();
+
   const frag = document.createDocumentFragment();
-  frag.append(box);
-  if (rowCount > shown.length) frag.append(el("p", { class: "note", text: `僅顯示前 ${shown.length} 列，共 ${rowCount} 列` }));
+  frag.append(el("div", { class: "table-box" }, el("table", {}, [el("thead", {}, head), tbody])));
+  const shown = Math.min(limit, rows.length);
+  if (total > shown) frag.append(el("p", { class: "note", text: `僅顯示前 ${shown} 列，共 ${total} 列` }));
   return frag;
 }
 
-function renderSql(sql) {
+// ---------------------------------------------------------------- 自動圖表
+const MAGNITUDE = (v) => (Math.abs(v) >= 1e8 ? `${+(v / 1e8).toFixed(2)}億` : Math.abs(v) >= 1e4 ? `${+(v / 1e4).toFixed(1)}萬` : String(v));
+
+function chartSpec(columns, rows) {
+  if (columns.length < 2 || rows.length < 2 || rows.length > 40) return null;
+  const yq = /^年(度|份)?$/.test(columns[0]) && columns[1] === "季";     // 年 + 季 合併成「2025Q3」
+  const start = yq ? 2 : 1;
+  const numIdx = [];
+  for (let i = start; i < columns.length; i++) { if (!isNumericCol(rows, i)) return null; numIdx.push(i); }
+  if (numIdx.length < 1 || numIdx.length > 3) return null;
+  if (!yq && isNumericCol(rows, 0) && !/(月|年|季|週)/.test(columns[0])) return null;   // 第一欄是一般數字（例如代碼）就不畫
+  const labels = rows.map((r) => (yq ? `${r[0]}Q${r[1]}` : String(r[0] ?? "-")));
+  const time = yq || /(月|日期|週|季|年)/.test(columns[0]) || labels.every((l) => /^\d{4}-\d{2}(-\d{2})?$/.test(l));
+  const series = numIdx.map((i) => ({ name: columns[i], data: rows.map((r) => r[i]) }));
+  const scale = series.map((s) => Math.max(0, ...s.data.map((v) => Math.abs(v ?? 0))));
+  const axis = series.map((_, k) => (k > 0 && scale[0] > 0 && scale[k] > 0 && (scale[0] / scale[k] > 20 || scale[k] / scale[0] > 20) ? 1 : 0));
+  const type = time ? "line" : rows.length > 8 ? "hbar" : "bar";
+  if (type === "hbar") {   // 橫條圖只有一條數值軸，量級差太多的欄位不畫（表格裡仍看得到）
+    const keep = series.map((_, k) => axis[k] === 0);
+    return { labels, series: series.filter((_, k) => keep[k]), axis: axis.filter((_, k) => keep[k]), type };
+  }
+  return { labels, series, axis, type };
+}
+
+function drawChart(div, spec) {
+  if (!window.echarts || !div.isConnected) return;
+  const pal = CONFIG.brand.palette;
+  const horizontal = spec.type === "hbar";
+  const nAxes = Math.max(...spec.axis) + 1;
+  const valueAxis = (i) => ({ type: "value", axisLabel: { formatter: MAGNITUDE }, splitLine: { show: i === 0 } });
+  const chart = window.echarts.init(div);
+  chart.setOption({
+    color: pal,
+    grid: { left: 8, right: 16, top: spec.series.length > 1 ? 40 : 24, bottom: 8, containLabel: true },
+    legend: spec.series.length > 1 ? { top: 0 } : undefined,
+    tooltip: {
+      trigger: "axis", axisPointer: { type: spec.type === "line" ? "line" : "shadow" },
+      formatter: (ps) => `${esc(ps[0].axisValueLabel ?? ps[0].name)}<br/>` + ps.map((p) => `${p.marker}${esc(p.seriesName)}：<b>${esc(p.value === null || p.value === undefined ? "-" : Number(p.value).toLocaleString("zh-TW", { maximumFractionDigits: 2 }))}</b>`).join("<br/>"),
+    },
+    xAxis: horizontal ? valueAxis(0) : { type: "category", data: spec.labels, axisLabel: { interval: 0, rotate: spec.labels.length > 8 ? 30 : 0 } },
+    yAxis: horizontal ? { type: "category", data: spec.labels, inverse: true } : (nAxes > 1 ? [valueAxis(0), valueAxis(1)] : valueAxis(0)),
+    series: spec.series.map((s, k) => ({
+      name: s.name, data: s.data, type: spec.type === "line" ? "line" : "bar", yAxisIndex: horizontal ? 0 : spec.axis[k],
+      barMaxWidth: 34, symbolSize: 7, smooth: false,
+    })),
+  });
+  liveCharts.push(chart);
+}
+
+function renderSql(sql, open) {
   const copy = el("button", { class: "copy", type: "button", "aria-label": "複製 SQL", text: "複製 SQL" });
-  copy.addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(sql); copy.textContent = "已複製"; }
-    catch { copy.textContent = "請手動複製"; }
+  copy.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try { await navigator.clipboard.writeText(sql); copy.textContent = "已複製"; } catch { copy.textContent = "請手動複製"; }
     setTimeout(() => { copy.textContent = "複製 SQL"; }, 1500);
   });
-  return el("details", {}, [
-    el("summary", { text: "查詢的 SQL" }),
-    el("div", { class: "sql-box" }, [el("pre", { text: sql }), copy]),
-  ]);
+  const d = el("details", {}, [el("summary", { text: "查詢的 SQL" }), el("div", { class: "sql-box" }, [el("pre", { text: sql }), copy])]);
+  if (open) d.setAttribute("open", "");
+  d.addEventListener("click", (e) => e.stopPropagation());
+  return d;
 }
 
-function renderAnswer(card, d) {
+// 完整的結果內容：圖表 + 表格 + SQL（窄螢幕放在卡片內；寬螢幕放在右側面板）
+function buildDetail(d, { limit, sqlOpen, sections }) {
+  const frag = document.createDocumentFragment();
+  const add = (title, node) => frag.append(sections ? el("div", { class: "section" }, [el("h3", { text: title }), node]) : node);
+  const spec = d.error ? null : chartSpec(d.columns, d.rows);
+  if (spec) {
+    const div = el("div", { class: "chart", "data-chart-type": spec.type, "data-series": String(spec.series.length), "data-axes": String(Math.max(...spec.axis) + 1), role: "img", "aria-label": "結果圖表" });
+    add("圖表", div);
+    requestAnimationFrame(() => drawChart(div, spec));
+  }
+  if (!d.error && d.row_count > 0) add("資料表", buildTable(d.columns, d.rows, limit, d.row_count));
+  if (d.sql) add("查詢的 SQL", renderSql(d.sql, sqlOpen));
+  return frag;
+}
+
+// ---------------------------------------------------------------- 對話卡片與右側面板
+function disposeCharts() { liveCharts.forEach((c) => c.dispose()); liveCharts = []; }
+
+function renderPanel() {
+  disposeCharts();
+  panel.replaceChildren();
+  panel.dataset.idx = String(activeIdx);
+  const e = entries[activeIdx];
+  if (!e || !e.data) {
+    panel.append(el("div", { class: "panel-empty" }, [el("b", { text: "分析結果會顯示在這裡" }), document.createTextNode("問一個問題，圖表、完整表格與 SQL 都會出現在右側")]));
+    return;
+  }
+  panel.append(el("div", { class: "panel-head" }, [el("h2", { text: "分析結果" }), el("p", { text: e.question })]));
+  if (e.data.error && !e.data.sql) {
+    panel.append(el("div", { class: "section" }, el("p", { class: "empty", text: "這次查詢沒有可顯示的結果。" })));
+  } else {
+    panel.append(buildDetail(e.data, { limit: CONFIG.panelRows, sqlOpen: true, sections: true }));
+  }
+}
+
+function setActive(i) {
+  const unchanged = i === activeIdx && panel.dataset.idx === String(i);
+  activeIdx = i;
+  entries.forEach((e, k) => e.card.classList.toggle("active", k === i && isWide()));
+  if (isWide() && !unchanged) renderPanel();
+}
+
+function feedbackRow(d) {
+  const row = el("div", { class: "foot" });
+  if (typeof d.latency_ms === "number") {
+    const rows = d.row_count > 0 ? `・共 ${d.row_count} 列` : "";
+    row.append(el("p", { class: "meta", text: `耗時 ${(d.latency_ms / 1000).toFixed(1)} 秒・嘗試 ${d.attempts} 次${rows}` }));
+  }
+  const up = el("button", { class: "fb", type: "button", "aria-pressed": "false", "aria-label": "這個回答有幫助", text: "👍 有幫助" });
+  const down = el("button", { class: "fb", type: "button", "aria-pressed": "false", "aria-label": "這個回答需要改進", text: "👎 需改進" });
+  for (const [btn, other] of [[up, down], [down, up]]) {   // 目前只切換畫面狀態；寫入資料庫在 T25
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const on = btn.getAttribute("aria-pressed") !== "true";
+      btn.setAttribute("aria-pressed", String(on));
+      other.setAttribute("aria-pressed", "false");
+    });
+  }
+  row.append(up, down);
+  return row;
+}
+
+function renderCard(e, idx) {
+  const { card, data: d } = e;
   card.replaceChildren();
+  card.classList.add("answer");
+  card.onclick = isWide() ? () => setActive(idx) : null;
   if (d.error) {
     card.append(el("div", { class: "error", role: "alert", text: d.error }));
+    if (!isWide() && d.sql) card.append(renderSql(d.sql, false));
   } else {
     if (d.explanation) card.append(el("p", { class: "explain", text: d.explanation }));
-    if (d.row_count > 0) card.append(renderTable(d.columns, d.rows, d.row_count));
-    else card.append(el("p", { class: "empty", text: "查詢成功，但沒有符合條件的資料。" }));
+    if (d.row_count === 0) {
+      card.append(el("p", { class: "empty", text: "查詢成功，但沒有符合條件的資料。" }));
+      if (!isWide() && d.sql) card.append(renderSql(d.sql, false));
+    } else if (isWide()) {
+      card.append(buildTable(d.columns, d.rows, CONFIG.previewRows, d.row_count).firstChild);   // 只放預覽表格
+      card.append(el("p", { class: "hintline", text: "完整結果、圖表與 SQL 在右側 →" }));
+    } else {
+      card.append(buildDetail(d, { limit: CONFIG.inlineRows, sqlOpen: false, sections: false }));
+    }
   }
-  if (d.sql) card.append(renderSql(d.sql));
-  if (typeof d.latency_ms === "number") {
-    card.append(el("p", { class: "meta", text: `耗時 ${(d.latency_ms / 1000).toFixed(1)} 秒・嘗試 ${d.attempts} 次` }));
-  }
+  card.append(feedbackRow(d));
 }
 
+function rerenderAll() {   // 視窗在寬／窄之間切換時，重畫所有已完成的回答
+  layout.classList.toggle("wide", isWide());
+  disposeCharts();
+  delete panel.dataset.idx;
+  entries.forEach((e, i) => { if (e.data) renderCard(e, i); });
+  if (isWide()) setActive(activeIdx >= 0 ? activeIdx : entries.length - 1);
+  else { disposeCharts(); panel.replaceChildren(); entries.forEach((e) => e.card.classList.remove("active")); }
+}
+wideQuery.addEventListener("change", rerenderAll);
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => liveCharts.forEach((c) => c.resize()), 150); });
+
 function setBusy(v) {
-  busy = v;
-  sendBtn.disabled = v;
-  input.disabled = v;
+  busy = v; sendBtn.disabled = v; input.disabled = v;
   document.querySelectorAll(".chip").forEach((c) => { c.disabled = v; });
   if (!v) input.focus();
 }
@@ -210,35 +417,34 @@ async function ask(question) {
   thread.append(el("div", { class: "msg-user", text: question }));
 
   const secs = el("span", { text: "0" });
-  const card = el("div", { class: "card" }, el("div", { class: "pending" }, [
-    el("div", { class: "spinner" }), el("span", { text: "思考中… 已 " }), secs, el("span", { text: " 秒" }),
-  ]));
+  const card = el("div", { class: "card" }, el("div", { class: "pending" }, [el("div", { class: "spinner" }), el("span", { text: "思考中… 已 " }), secs, el("span", { text: " 秒" })]));
   thread.append(card);
-  input.value = ""; autoGrow();
-  setBusy(true); scrollDown();
+  const entry = { data: null, card, question };
+  entries.push(entry);
+  const idx = entries.length - 1;
+  if (isWide()) {   // 面板先顯示骨架畫面
+    disposeCharts();
+    panel.replaceChildren(el("div", { class: "skeleton", style: "height:46px;width:60%" }), el("div", { class: "skeleton", style: "height:240px" }), el("div", { class: "skeleton", style: "height:160px" }));
+    entries.forEach((e) => e.card.classList.remove("active"));
+  }
+  input.value = ""; autoGrow(); setBusy(true); scrollDown();
 
   const t0 = Date.now();
   const timer = setInterval(() => { secs.textContent = String(Math.floor((Date.now() - t0) / 1000)); }, 500);
   const ctrl = new AbortController();
   const abortTimer = setTimeout(() => ctrl.abort(), CONFIG.requestTimeoutMs);
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }), signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      const msg = res.status === 422 ? "問題格式不符（長度需為 1–500 字）" : `伺服器回應錯誤（HTTP ${res.status}）`;
-      renderAnswer(card, { error: msg });
-    } else {
-      renderAnswer(card, await res.json());
-    }
+    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }), signal: ctrl.signal });
+    entry.data = res.ok ? await res.json()
+      : { error: res.status === 422 ? "問題格式不符（長度需為 1–500 字）" : `伺服器回應錯誤（HTTP ${res.status}）` };
   } catch (e) {
-    const msg = e.name === "AbortError" ? "等待太久，請稍後再試或換個問法" : "無法連線到後端，請確認 make dev 正在執行";
-    renderAnswer(card, { error: msg });
+    entry.data = { error: e.name === "AbortError" ? "等待太久，請稍後再試或換個問法" : "無法連線到後端，請確認 make dev 正在執行" };
   } finally {
     clearInterval(timer); clearTimeout(abortTimer);
+    renderCard(entry, idx);
     setBusy(false);
-    card.scrollIntoView({ block: "start", behavior: "smooth" });  // 讓使用者從回答開頭讀起
+    if (isWide()) setActive(idx);
+    card.scrollIntoView({ block: "start", behavior: "smooth" });   // 讓使用者從回答開頭讀起
   }
 }
 
@@ -248,27 +454,19 @@ function showWelcome() {
     b.addEventListener("click", () => ask(q));
     return b;
   });
-  thread.append(el("div", { class: "welcome" }, [
-    el("h2", { text: "想知道什麼？直接問我" }),
-    el("p", { text: "點下面的範例，或在下方輸入你的問題" }),
-    el("div", { class: "chips" }, chips),
-  ]));
+  thread.append(el("div", { class: "welcome" }, [el("h2", { text: "想知道什麼？直接問我" }), el("p", { text: "點下面的範例，或在下方輸入你的問題" }), el("div", { class: "chips" }, chips)]));
 }
 
-function autoGrow() {
-  input.style.height = "auto";
-  input.style.height = Math.min(input.scrollHeight, 160) + "px";
-}
+function autoGrow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; }
 input.addEventListener("input", autoGrow);
 input.addEventListener("keydown", (e) => {
   // 中文輸入法選字時按 Enter 不能送出（isComposing / keyCode 229）
-  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
-    e.preventDefault();
-    ask(input.value);
-  }
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); ask(input.value); }
 });
 form.addEventListener("submit", (e) => { e.preventDefault(); ask(input.value); });
 
+layout.classList.toggle("wide", isWide());
+renderPanel();
 showWelcome();
 input.focus();
 </script>

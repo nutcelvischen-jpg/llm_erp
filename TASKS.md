@@ -692,29 +692,167 @@ class SqlAnswer:
 
 ---
 
-### T13c 介面打磨：圖表與證據面板
-**目標**：讓 Demo 畫面更有說服力。仍是單一 HTML 檔，圖表函式庫放 `backend/app/web/vendor/`（用 `npm pack echarts` 取得 `echarts.min.js`，不得引用 CDN）。
-**步驟**
-1. 版面改為左右兩欄：左側對話、右側「證據面板」，顯示最新一則回答的 SQL、完整表格（最多 200 列、可捲動）與圖表；窄螢幕時自動改為上下排列。
-2. 自動圖表：結果為「1 個文字／日期欄 + 1–3 個數值欄」時自動畫圖——第一欄為月份或日期用折線圖，否則用長條圖；圖表右上角可切換「圖／表」。不符合條件就不畫圖。
-3. 品牌可客製：顏色、公司名稱放在 CSS 變數與檔案開頭的 `CONFIG` 常數，改一處即可換成客戶的名稱與色系。
-4. 細節：載入中的骨架畫面、表格欄位可點擊排序、`null` 顯示 `-`、無障礙（按鈕有 aria-label）。
-5. 👍／👎 回饋按鈕：先放 UI，點擊暫時只在畫面標示；實際寫入 `app.feedback` 在 T25。
-**驗收**：問「最近 6 個月每個月的營收趨勢」會自動出折線圖；問「今年營收最高的 3 個客戶」出長條圖；右側面板同時顯示 SQL 與表格。
+### T13c 介面打磨：圖表與證據面板（已完成）
+**目標**：讓 Demo 畫面更有說服力。仍是單一 HTML 檔，圖表函式庫放 `backend/app/web/vendor/`（`npm pack echarts` 取得 `echarts.min.js`，連同 LICENSE、NOTICE；不得引用 CDN）。
+**實作內容**
+1. 寬螢幕（≥1000px）左右兩欄：左側對話（卡片只放說明與 5 列預覽）、右側「分析結果」面板，由上而下顯示圖表、完整資料表（最多 200 列）、SQL（預設展開）。點舊的回答卡片可切換面板內容。窄螢幕自動改為單欄，圖表、表格、SQL 放進卡片內。
+2. 自動圖表：1 個標籤欄 + 1–3 個數值欄、2–40 列才畫。月份／日期／季度畫折線，其餘畫長條，類別超過 8 個改橫條；「年＋季」合併成 2025Q3；數值量級差超過 20 倍用雙 Y 軸；含文字欄、只有 1 列、第一欄是一般數字（代碼）時不畫圖。座標軸數字以「萬／億」顯示。
+3. 品牌可客製：檔案開頭的 `CONFIG.brand`（名稱、標語、主色、圖表色盤）與 `CONFIG.examples`（範例問題），改一處即可。
+4. 細節：處理中面板顯示骨架畫面、表格欄位標題可點擊排序（升冪／降冪／還原，空值永遠在最後）、按鈕皆有 aria-label、圖表 tooltip 對文字做 HTML 跳脫。
+5. 👍／👎 回饋按鈕：目前只切換畫面狀態；寫入 `app.feedback` 在 T25。
+**驗證**：`python3 scripts/check_frontend.py [截圖資料夾]`（66 項真實瀏覽器檢查，含圖表 tooltip 的 XSS）。
+**驗收**：問「最近 6 個月每個月的營收趨勢」自動出折線圖；問「今年營收最高的 3 個客戶」出長條圖；右側面板同時顯示圖表、表格與 SQL。
 
 ---
 
-### T14 Text-to-SQL 評估腳本
-**目標**：量化正確率，之後每次改 prompt 都要跑。
-**步驟**
-1. `data/golden/text2sql.yaml`：30 題，每題含 `question`、`check`（三選一：`row_count_gt: N` / `contains: 值` / `sql_equals_result_of: <參考SQL>`，第三種是執行參考 SQL 比對結果集）。
-2. `scripts/eval_text2sql.py`：逐題跑 `text2sql.run`，輸出表格（題目、通過、嘗試次數、耗時）與總分，寫到 `data/golden/report_text2sql_<日期>.md`。
-
-**驗收**：`make eval-sql` 正確率 ≥ 80%（達不到就回 T12 補範例、T08 補 schema_doc，不要改測試）。
+### T14 Text-to-SQL 評估腳本（已完成）
+**目標**：量化 Text-to-SQL 的正確率與延遲；之後每次改 prompt、範例或 `schema_doc.md` 都要重跑，確認沒有退步。
+**內容**
+- `data/golden/text2sql.yaml`：30 題（營收、毛利、客戶、業績、訂單、產品、應收、庫存、採購各類，另有 4 題「應該婉拒」：薪資、競爭對手、天氣、要求修改資料）。題目措辭刻意跟 `sql_examples.yaml` 的範例不同，測的是泛化能力。
+- 每題一種檢查：`rows_match`（附**參考 SQL**，評估時才在資料庫執行，所以題目不會隨日期過期；容許答案多帶欄位、順序不同，數字只容許四捨五入誤差）、`contains`、`row_count`、`row_count_gt`、`refusal`。
+- `backend/app/eval_checks.py`：比對邏輯（純函式，有單元測試）。數字容差依精度判斷：參考值為整數只容許 ±0.5，毛利率這類小數只容許 ±0.055（答案四捨五入成整數則 ±0.55），避免少算一筆也被判對。
+- `scripts/eval_text2sql.py`：`make eval-sql` 跑全部；`--only Q01,Q05`、`--category 應收`、`--threshold 0.8`（低於門檻結束碼為 1）。輸出每題結果與耗時、總正確率、各類別統計、平均與 P95 延遲、平均嘗試次數，報告存 `data/golden/report_text2sql_<日期>.md`（失敗題會附上產生的 SQL 與參考 SQL）。
+- 測試：`test_eval_checks.py`、`test_golden_set.py`（含需要資料庫的「所有參考 SQL 都有結果」）。
+**規則**：沒達標時，補 few-shot 範例或 `schema_doc.md`，**不要改黃金題**。（例外：若參考 SQL 對這份資料沒有結果，表示題目本身無效，才可修題。）
+**驗收**：`make eval-sql` 正確率 ≥ 80%。
 
 ---
 
-## Phase 4：文件 RAG
+### 架構調整說明：模板優先（T14b–T14f，插在 T14 與 T15 之間）
+**決策**：為了降低 SQL 的不確定性，改為「模板優先」。LLM 只做兩件事：① 辨識意圖並填參數、② 看結果寫回覆；**要執行的 SQL 一律由程式寫死（參數化模板）**。
+```
+問題 → ① LLM 辨識「模板＋參數」→ ② 程式驗證參數（日期、名稱比對由程式算）→ ③ 執行寫死的 SQL（值一律用綁定參數）→ ④ LLM 看結果回覆（數字須能在結果中找到）
+```
+- 沒命中任何模板：預設婉拒並推薦相近問題，同時記錄下來供日後做成新模板；管理員可用 `ALLOW_AI_FALLBACK=true` 開啟 AI 兜底（走 T13 的 Text-to-SQL，回答必須明顯標示「AI 即時產生，請查核」）。
+- T11 守門員、T12 範例、T13 Text-to-SQL、T14 評估都保留：守門員仍檢查每一句模板 SQL；範例變成意圖辨識的素材；Text-to-SQL 是兜底；黃金題用來驗證模板與意圖。
+- **已驗證的技術細節（請照做）**：
+  1. 守門員會把 `:name` 改寫成 `%(name)s`，SQLAlchemy 再跳脫成 `%%` 導致語法錯誤。解法：`validate()` 回傳前用 `re.sub(r"%\((\w+)\)s", r":\1", sql)` 還原。
+  2. `LIMIT :top_n` 會被守門員當成非常數 LIMIT 壓成 1000。解法：`top_n` 等已驗證的整數**直接寫成常數**（`LIMIT 5`），不要用綁定參數。
+  3. 可選條件寫成 `(CAST(:customer AS text) IS NULL OR "客戶名稱" = :customer)`，傳入 `None` 就不篩選。
+  4. 字串、日期、數字等「值」一律用 `:name` 綁定；只有欄位名稱、排序方向這類「結構」可由程式從**白名單對照表**插入，絕不插入使用者或 LLM 提供的字串。
+
+---
+
+### T14b 查詢目錄骨架：資料結構、期間解析、實體比對
+**目標**：模板式查詢的共用基礎（不含任何具體模板）。檔案放 `backend/app/catalog/`：`__init__.py`、`base.py`、`periods.py`、`entities.py`。
+**步驟**
+1. `base.py`：
+```python
+@dataclass(frozen=True)
+class ParamSpec:
+    name: str
+    kind: Literal["period", "enum", "int", "entity"]
+    label: str                                    # 中文名稱，用於提示與反問
+    required: bool = False
+    default: Any = None
+    choices: dict[str, list[str]] | None = None   # enum：{標準值: [同義詞…]}，標準值同時是白名單對照表的 key
+    entity: Literal["customer", "supplier", "sku", "rep"] | None = None
+    min: int | None = None
+    max: int | None = None
+
+@dataclass
+class BuiltQuery:
+    sql: str            # 只含 :name 綁定參數；已通過 sql_guard.validate
+    binds: dict
+
+@dataclass
+class QueryTemplate:
+    id: str
+    title: str                                    # 例如「營收排名」
+    description: str                              # 給 LLM 看的一句話說明
+    examples: list[str]                           # 意圖辨識用的範例說法（至少 5 句，措辭多樣）
+    params: list[ParamSpec]
+    build: Callable[[dict], BuiltQuery]           # 純函式：已驗證的參數 → SQL 與綁定參數
+    facts: Callable[[list[str], list[list]], dict]  # 程式算出的事實（總額、第一名、占比…），供回覆引用
+    summary: Callable[[dict], str]                # 固定句型摘要（LLM 失敗或數字檢查不過時使用）
+```
+2. `sql_guard.py` 小修：`validate()` 回傳前，把 `%(name)s` 還原成 `:name`（見上方技術細節 1），並補測試：綁定參數可通過、保留名稱、LIKE 的 `%` 不受影響、`LIMIT 5` 常數保留。
+3. `periods.py`：`resolve_period(code: str, today: date) -> Period(date_from, date_to, label)`（`date_to` 為**不含**的上界）。代碼：
+   - `this_month`、`last_month`、`this_quarter`、`last_quarter`、`this_year`、`last_year`
+   - `ytd`（今年 1/1 到今天）、`last_n_days:N`、`last_n_months:N`（含本月；從 N−1 個月前的 1 日起）、`all`
+   - `quarter:<this_year|last_year|YYYY>:<1-4>`、`month:<this_year|last_year|YYYY>:<1-12>`
+   - 另提供 `compare_periods(kind, today)`：`yoy_ytd`（今年累計 vs 去年同期，2/29 要處理）、`mom`（本月累計 vs 上月同期）、`qoq`。
+   - `label` 為中文說明，例如「2026 年（今年）」「2026 年 Q3」。不合法的代碼丟 `ValueError`。
+4. `entities.py`：`EntityIndex(providers)`，`providers` 是 `{kind: () -> list[str]}`（正式版從資料庫讀客戶／供應商／料號／業務名單；測試時注入假名單）。`match(kind, text) -> Match(status, value, options)`：
+   - 正規化：NFKC、去空白、料號不分大小寫、比對時忽略「股份有限公司／有限公司／公司」。
+   - `exact`（完全相同）→ `fuzzy`（唯一的包含關係，或 difflib 相似度 ≥ 0.75 且與第二名差 ≥ 0.1）→ `ambiguous`（多個接近，`options` 最多 5 個）→ `none`。
+**測試**（純單元，不需服務）：`test_periods.py` 以固定的 `today`（2026-10-30、2026-03-31、2024-02-29、2026-01-01）逐一驗證每種代碼的起訖與跨年、閏年；`test_entities.py`：完全相同、省略「公司」、唯一包含、模糊、不明確、查無、料號大小寫。
+**驗收**：`make test` 通過。
+
+---
+
+### T14c 查詢模板（16 個）與黃金題對照
+**目標**：把日常問題做成寫死的模板。檔案：`backend/app/catalog/templates/`（`sales.py`、`receivable.py`、`inventory.py`、`purchasing.py`）與 `backend/app/catalog/registry.py`（`TEMPLATES: dict[str, QueryTemplate]`）。
+**通用規則**
+- 只用四個 View；值一律綁定參數；`top_n` 等整數寫成常數；維度、指標、排序方向由白名單對照表決定（例如 `DIMENSIONS = {"客戶": '"客戶名稱"', "產品類別": '"產品類別"', …}`）。
+- 金額 `ROUND(…, 0)`、比率 `ROUND(100.0 * … , 1)`；日期區間用 `>= :date_from AND < :date_to`。
+- 每個模板都要有：≥ 5 句 `examples`、`facts()`、`summary()`，並通過 `sql_guard.validate`。
+**16 個模板**
+| id | 用途 | 主要參數（括號為預設值）|
+|---|---|---|
+| `sales_rank` | 排名：客戶／產品／料號／產品類別／業務／區域 × 營收／毛利／毛利率／數量／訂單數／營收占比 | dimension、metric（營收）、period（this_year）、top_n（5，上限 50）、order（desc）|
+| `sales_total` | 合計：一次回傳 營收、毛利、毛利率(%)、訂單數 | period（this_year）、customer?、category?、rep?、region? |
+| `sales_trend` | 趨勢（也可取最高／最低的月份） | grain（月／季）、period（last_n_months:6）、customer?、order（time／desc／asc）、top_n? |
+| `sales_compare` | 同期比較 | compare（yoy_ytd／mom／qoq）、metric、dimension（整體／客戶／產品類別／業務／區域）、top_n（10）、order（下滑最多／成長最多）|
+| `sales_largest_orders` | 金額最大的訂單 | period、top_n（5）|
+| `ar_summary` | 應收合計：未收總額、未收張數、客戶數 | customer?、overdue_gt?（不填＝全部未收；0＝已逾期；30＝逾期超過 30 天）|
+| `ar_by_customer` | 欠款／逾期客戶清單 | overdue_gt?、top_n（10）、order |
+| `ar_invoices` | 某客戶的逾期發票明細 | customer（必填）、overdue_gt（0）|
+| `ar_aging` | 帳齡分佈（1–30、31–60、61 天以上） | — |
+| `stock_dead` | 呆滯料號明細與庫存金額 | idle_days（180）、top_n（50）|
+| `stock_dead_total` | 呆滯庫存合計：料號數、庫存金額 | idle_days（180）|
+| `stock_shortage` | 缺料與建議採購量 | — |
+| `stock_lookup` | 單一料號的庫存、安全庫存、最後異動日、供應商 | sku（必填）|
+| `stock_rank` | 庫存排名 | metric（庫存金額）、top_n（10）、order |
+| `supplier_ontime` | 供應商準時交貨率 | order（最低）、top_n（10）|
+| `purchase_summary` | 採購金額合計或依供應商彙總 | period、status（全部有效／待交貨／已收貨）、group（無／供應商）|
+
+**黃金題對照**：建立 `data/golden/template_map.yaml`，把 T14 的 26 題資料型問題對應到「模板＋參數」（婉拒題不需要）：
+`Q01 sales_rank{客戶,營收,this_year,5}`、`Q02 sales_total{this_year}`、`Q03 sales_total{this_month}`、`Q04 sales_total{last_year}`、`Q05 sales_total{this_year, customer:華發實業}`、`Q06 sales_total{last_year, customer:鴻遠機械}`、`Q07 sales_rank{產品類別,毛利率,this_year,50}`、`Q08 sales_rank{業務,營收,this_year,1}`、`Q09 sales_trend{月,this_year,order:desc,top_n:1}`、`Q10 sales_rank{區域,營收占比,this_year,50}`、`Q11 sales_largest_orders{this_year,1}`、`Q12 sales_rank{料號,數量,this_year,3}`、`Q13 sales_total{quarter:last_year:3}`、`Q14 ar_summary{}`、`Q15 ar_summary{overdue_gt:30}`、`Q16 ar_summary{customer:台陽科技}`、`Q17 ar_summary{customer:精興金屬, overdue_gt:0}`、`Q18 ar_by_customer{overdue_gt:0, top_n:50}`、`Q19 ar_by_customer{overdue_gt:60, top_n:50}`、`Q20 stock_rank{庫存金額,5}`、`Q21 stock_shortage{}`、`Q22 stock_dead_total{}`、`Q23 stock_lookup{BRG-6205-2RS}`、`Q24 supplier_ontime{最低,1}`、`Q25 purchase_summary{this_year,全部有效}`、`Q26 purchase_summary{all,待交貨}`。
+**測試**
+- 單元：每個模板 `build()` 產生的 SQL 通過守門員；參數缺漏／越界的行為；SQL 中**不含**任何使用者提供的字串（用含單引號與分號的參數驗證只出現在 binds）。
+- `@pytest.mark.db`：每個模板用預設參數跑真實資料庫皆有結果；**`test_template_map.py`：26 題各自執行對應模板，結果須通過 T14 的 `eval_checks.rows_match`（與參考 SQL 比對）或 `contains`**，這證明模板本身與 AI 產生 SQL 的標準答案一致。
+- `facts()` 與 `summary()`：以範例資料驗證每個模板都能產生非空、不含 `None` 的摘要。
+**驗收**：`make test`、`make test-db` 通過（含 26 題對照）。
+
+---
+
+### T14d 意圖辨識器
+**目標**：問題 → 模板＋參數，或反問，或未命中。檔案：`backend/app/catalog/intent.py`；新增 `sql/004_catalog.sql`（`app.unmatched_questions`：id、ts、question、candidates jsonb）。
+**流程 `recognize(question, today) -> Intent`**
+1. **候選**：啟動時對所有模板的 `examples` 做 embedding（存記憶體）；問題的 embedding 與各模板取最大餘弦相似度，取前 5 名。最高分低於 `INTENT_MIN_SIM`（預設 0.35，於評估時校準）直接判未命中，**不呼叫 LLM**。
+2. **LLM（`llm.chat_json`，溫度 0、關閉思考）**：prompt 含今天日期、5 個候選的 id／title／description／參數規格（列出標準值）。規則：不確定就回 `{"template_id": null}`；期間一律輸出代碼，**不要自己算日期**；客戶、供應商、料號照使用者說法原樣填入（由程式比對）。輸出 `{"template_id": "...", "params": {...}}`。
+3. **程式驗證 `normalize_params`**：template_id 不在候選→未命中；enum 接受標準值或同義詞，不合法用預設值（必填則反問）；int 夾在 [min, max]；period 以語法驗證，失敗用預設；entity 用 `EntityIndex`（exact／fuzzy 自動替換並記錄「已將『華發』視為『華發實業』」；ambiguous 反問並列出選項；none 反問「找不到…」並推薦相近名稱）；未知參數丟棄；缺必填→反問。
+4. **回傳** `Intent(kind: template|clarify|no_match, template_id, params, params_readable: list[str], message, options, candidates)`。`params_readable` 例如 `["維度：客戶", "指標：營收", "期間：2026 年（今年）", "前 5 名"]`。未命中時寫入 `app.unmatched_questions`。LLM 失敗時回 `no_match` 並附「AI 暫時無法使用」。
+**意圖黃金集**：`data/golden/intents.yaml`，40 題（16 個模板各至少 2 題，措辭與 `examples` 不同，含 8 題「不支援」：薪資、天氣、競爭對手、修改資料、文件問題等）；`scripts/eval_intents.py`（`make eval-intent`）輸出：模板正確率、參數正確率、不支援題的誤判率。**門檻**：模板 ≥ 95%、參數 ≥ 90%、不支援題誤判 0。
+**測試**：以假的 embedding／LLM 驗證：候選排序、低於門檻不呼叫 LLM、不存在的 template_id、同義詞、夾值、實體的四種狀態、缺必填反問、未知參數、LLM 例外。真實測試 `@llm @db` 跑意圖黃金集。
+**驗收**：`make eval-intent` 達門檻。
+
+---
+
+### T14e 結果回覆（LLM 看結果、不可編造數字）
+**目標**：`backend/app/catalog/answer.py`：`summarize(question, template, params_readable, columns, rows, facts) -> AnswerText(text, source)`。
+**規則**
+- `facts` 由模板的 `facts()` 以**程式**算出（總額、第一名與占比、最高／最低月份、變化金額與百分比、件數…），數值連同預先格式化的字串一起給 LLM；LLM 不做任何運算。
+- LLM prompt：問題、查詢說明、結果表（最多 20 列）、facts。要求：繁體中文、2–3 句、先給結論；**只能使用 facts 與表格中出現的數字**；不推測原因；不提 SQL。
+- **數字檢查** `numbers_supported(text, rows, facts) -> (ok, 未獲支持的數字)`：擷取回覆中的數字（含千分位、小數、`%`、`萬`、`億`），與「結果與 facts 的所有數值（含萬／億換算，容許四捨五入）」比對；允許的例外：年份與月份（來自期間說明或結果日期）、排名序數（不超過 top_n 與列數）。**檢查不過，或 LLM 失敗，就改用模板的 `summary()` 固定句型**，並標記 `source="fixed"`；絕不顯示未經檢查的數字。
+**測試**：數字擷取的邊界（`1,234.5`、`12.3%`、`1,198 萬`、中文數字不當數字）；支援／不支援的判斷；16 個模板的 `summary()` 皆可產生；LLM 失敗時退回固定句型；真實測試 `@llm`：3 個模板的回覆都通過數字檢查。
+**驗收**：`make test`、`make test-llm` 通過。
+
+---
+
+### T14f 整合：`catalog.answer_question`、API 與網頁
+**目標**：把 T14b–T14e 串起來，並接上 `/api/chat` 與網頁。
+**步驟**
+1. `backend/app/catalog/runner.py`：`answer_question(question, today=None) -> CatalogAnswer`。流程：`recognize` →（clarify／no_match 直接回傳）→ 執行模板（`engine_ro`、`text(sql)` 加綁定參數、逾時 10 秒）→ `summarize`。欄位：`mode`（template／ai_sql／clarify／no_match／error）、`template_id`、`template_title`、`params_readable`、`columns`、`rows`、`row_count`、`sql`（含 `:name`）、`binds`、`answer`、`answer_source`、`options`、`suggestions`、`warning`、`error`、`latency_ms`。
+2. 未命中：`ALLOW_AI_FALLBACK=false`（預設，新增到 `.env.example` 與 `config.py`）時，回覆「這類問題目前還不支援」並附 3 個最相近的範例問題；為 `true` 時改走 `text2sql.run`，`mode="ai_sql"`、`warning="AI 即時產生的查詢，請查核 SQL 與結果"`。（管理員在頁面切換開關留到 T26。）
+3. `/api/chat` 改呼叫 `answer_question`；回傳保留舊欄位（`explanation` 放 `answer`），新增上述欄位。
+4. 網頁：卡片上方顯示「標準查詢：營收排名」徽章與 `params_readable` 標籤；`mode=ai_sql` 顯示醒目的黃色警示；`clarify` 以按鈕呈現 `options`（點選後以「原問題（指：選項）」重新送出）；`no_match` 顯示建議問題按鈕（點選即送出）；SQL 區塊同時顯示綁定參數。更新 `scripts/check_frontend.py` 對應檢查。
+5. `scripts/eval_text2sql.py` 新增 `--engine template|ai`（預設 template）：template 模式呼叫 `answer_question`，用同一份 30 題黃金題驗證。
+**測試**：單元（假的 recognize／LLM）涵蓋 template、clarify、no_match、兜底開關、錯誤；API 欄位；網頁檢查；真實測試跑三個 Demo 問題。
+**驗收**：`make eval-sql`（template 模式）資料型 26 題 ≥ 95%、4 題婉拒題全部為 no_match；再用 `--engine ai` 跑一次，兩份報告並列比較正確率、平均延遲與嘗試次數。
+
+---
 
 ### T15 測試文件準備
 **目標**：20 份繁中 PDF 放進 `data/docs/`，由代理**自行生成**（不要抓網路檔案）。
@@ -825,7 +963,7 @@ def retrieve(query: str, top_k=20, top_n=5, doc_type: str | None = None) -> list
 **流程**
 ```
 route
- ├ sql  → text2sql.run → summarize_table(LLM 把表格寫成 3 句結論，附上要點數字)
+ ├ sql  → catalog.answer_question（模板優先；未命中時依 ALLOW_AI_FALLBACK 決定婉拒或走 text2sql.run；回覆已含數字檢查，不必再 summarize_table）
  ├ docs → retrieve → answer
  ├ both → 兩者並行(ThreadPoolExecutor) → 合併 prompt 產生最終回答
  └ chat → 一般回覆（system prompt 說明自己是公司 ERP 助理，不回答與公司無關的事）

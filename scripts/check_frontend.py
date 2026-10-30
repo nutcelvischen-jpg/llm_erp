@@ -44,15 +44,21 @@ def mock(page, payload=None, status=200, delay_ms=0, abort=False):
     return requests
 
 
-def fresh(browser):
-    page = browser.new_page(viewport={"width": 1100, "height": 800})
+WEB = ROOT / "backend" / "app" / "web"
+
+
+def fresh(browser, width=800):
+    """預設 800 寬（窄版：結果直接放在對話卡片內）；width>=1000 則是兩欄版面。"""
+    page = browser.new_page(viewport={"width": width, "height": 800})
     page.route(BASE, lambda r: r.fulfill(status=200, content_type="text/html; charset=utf-8", body=HTML))
+    page.route("http://app.test/static/**", lambda r: r.fulfill(path=str(WEB / r.request.url.split("/static/")[1])))
     page.goto(BASE)
     return page
 
 
 def shot(page, name):
     if SHOTS:
+        page.wait_for_timeout(1300)  # 等圖表進場動畫播完
         SHOTS.mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(SHOTS / f"{name}.png"))
 
@@ -164,10 +170,140 @@ with sync_playwright() as p:
     page.wait_for_selector("table")
     page.wait_for_timeout(500)
     check(page.evaluate("window.__xss") is None, "惡意 HTML 不會被執行")
-    check(page.locator("img").count() == 0 and page.locator("script").count() == 1, "沒有被注入的 img/script 元素")
+    check(page.locator("#thread img, #panel img, #thread script, #panel script").count() == 0, "對話區與面板沒有被注入的 img/script 元素")
     check(evil in page.locator(".explain").inner_text(), "說明文字原樣顯示為文字")
     check(evil in page.locator("th").first.inner_text(), "欄位名稱原樣顯示為文字")
     check("window.__xss=4" in page.locator(".msg-user").inner_text(), "使用者輸入原樣顯示為文字")
+    page.close()
+
+
+    # ================= T13c：寬螢幕兩欄版面、圖表、排序 =================
+    TOP = answer(explanation="今年營收最高的客戶", sql='SELECT "客戶名稱" FROM "v_銷售明細" LIMIT 200',
+                 columns=["客戶名稱", "營收"], rows=[["華發實業", 11979390], ["鴻遠機械", 9869353], ["億達企業", 3783773]], row_count=3)
+    TREND = answer(explanation="近 6 個月營收", sql='SELECT 1 FROM "v_銷售明細" LIMIT 200', columns=["月份", "營收", "毛利率(%)"],
+                   rows=[[f"2026-0{m}", 7000000 + m * 90000, 24 + m * 0.2] for m in range(5, 10)], row_count=5)
+
+    def ask_and_wait(page, payload, question="測試", selector=".card.answer"):
+        before = page.locator(selector).count()
+        page.unroute("**/api/chat")
+        mock(page, payload)
+        page.fill("#input", question)
+        page.press("#input", "Enter")
+        page.wait_for_function(f"document.querySelectorAll('{selector}').length > {before}")
+        page.wait_for_timeout(400)
+
+    page = fresh(browser, width=1280)
+    mock(page, TOP)
+    page.fill("#input", "營收前三")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".panel .chart canvas")
+    check(page.locator("#layout.wide").count() == 1 and page.locator("#panel").is_visible(), "寬螢幕顯示右側面板")
+    check(page.locator(".panel .chart").get_attribute("data-chart-type") == "bar", "客戶營收畫長條圖")
+    check(page.locator(".panel table tbody tr").count() == 3, "面板有完整資料表")
+    check(page.locator(".panel details").get_attribute("open") is not None and "v_銷售明細" in page.locator(".panel pre").inner_text(), "面板同時顯示 SQL")
+    check(page.locator(".panel-head p").inner_text() == "營收前三", "面板標題顯示對應的問題")
+    check(page.locator(".card.answer table tbody tr").count() == 3 and page.locator(".hintline").count() == 1, "對話卡片只放預覽與提示")
+    check(page.locator(".card.answer .chart").count() == 0 and page.locator(".card.answer details").count() == 0, "對話卡片不重複放圖與 SQL")
+    check(page.locator(".card.answer").first.get_attribute("class").count("active") == 1, "最新回答為選取狀態")
+    shot(page, "6_wide_bar")
+
+    ask_and_wait(page, TREND, "趨勢")
+    check(page.locator(".panel .chart").get_attribute("data-chart-type") == "line", "月份資料畫折線圖")
+    check(page.locator(".panel .chart").get_attribute("data-axes") == "2", "營收與毛利率量級差太多時用雙 Y 軸")
+    check("active" in page.locator(".card.answer").nth(1).get_attribute("class") and "active" not in page.locator(".card.answer").nth(0).get_attribute("class"), "選取狀態移到最新回答")
+    shot(page, "7_wide_line")
+    page.locator(".card.answer").nth(0).click()
+    page.wait_for_selector('.panel .chart[data-chart-type="bar"]')
+    check("營收前三" in page.locator(".panel-head p").inner_text() and "active" in page.locator(".card.answer").nth(0).get_attribute("class"), "點舊回答可切換面板")
+
+    # 排序：升冪 → 降冪 → 還原
+    first = lambda: page.locator(".panel tbody tr").first.locator("td").first.inner_text()
+    check(first() == "華發實業", "排序前為原順序")
+    page.locator(".panel th button", has_text="營收").click()
+    check(first() == "億達企業", "點欄位標題：數字升冪")
+    page.locator(".panel th button", has_text="營收").click()
+    check(first() == "華發實業", "再點一次：降冪")
+    page.locator(".panel th button", has_text="營收").click()
+    page.locator(".panel th button", has_text="客戶名稱").click()
+    check(page.locator(".panel th .arrow").first.inner_text() == "▲", "排序箭頭")
+    check(page.locator(".panel .chart canvas").count() == 1, "點卡片或排序不會讓圖表消失")
+
+    # 回饋按鈕
+    up, down = page.locator(".card.answer").nth(0).locator(".fb").nth(0), page.locator(".card.answer").nth(0).locator(".fb").nth(1)
+    up.click()
+    check(up.get_attribute("aria-pressed") == "true" and down.get_attribute("aria-pressed") == "false", "👍 可切換")
+    down.click()
+    check(up.get_attribute("aria-pressed") == "false" and down.get_attribute("aria-pressed") == "true", "👎 與 👍 互斥")
+
+    # 各種圖表判斷
+    YQ = answer(columns=["年", "季", "營收", "毛利率(%)"], row_count=4,
+                rows=[[2025, 3, 23109297, 25.6], [2025, 4, 24500000, 25.9], [2026, 1, 22000000, 24.1], [2026, 2, 21800000, 23.8]])
+    ask_and_wait(page, YQ, "季度")
+    check(page.locator(".panel .chart").get_attribute("data-chart-type") == "line", "年+季合併成季度折線圖")
+    check(page.locator(".panel tbody tr").first.locator("td").first.inner_text() == "2025", "年份不加千分位（面板）")
+
+    CAT = answer(columns=["產品類別", "營收", "占比(%)"], row_count=3, rows=[["軸承", 40000000, 55.2], ["齒輪", 20000000, 27.6], ["扣件", 12000000, 17.2]])
+    ask_and_wait(page, CAT, "占比")
+    check(page.locator(".panel .chart").get_attribute("data-chart-type") == "bar" and page.locator(".panel .chart").get_attribute("data-axes") == "2", "營收與占比用雙軸長條圖")
+
+    MANY = answer(columns=["客戶名稱", "差額"], row_count=12, rows=[[f"客戶{i}", -i * 1000] for i in range(12)])
+    ask_and_wait(page, MANY, "很多列")
+    check(page.locator(".panel .chart").get_attribute("data-chart-type") == "hbar", "類別超過 8 個改畫橫條圖")
+
+    STOCK = answer(columns=["料號", "品名", "現有庫存", "庫存金額"], row_count=2, rows=[["BRG-1", "軸承", 100, 5000], ["BRG-2", "軸承", 200, 9000]])
+    ask_and_wait(page, STOCK, "文字欄")
+    check(page.locator(".panel .chart").count() == 0 and page.locator(".panel table").count() == 1, "含文字欄的結果不畫圖，只出表格")
+
+    ask_and_wait(page, answer(columns=["客戶名稱", "營收"], rows=[["甲", 1]], row_count=1), "單列")
+    check(page.locator(".panel .chart").count() == 0, "只有 1 列不畫圖")
+
+    CODES = answer(columns=["代碼", "數量"], rows=[[101, 5], [102, 9], [103, 3]], row_count=3)
+    ask_and_wait(page, CODES, "代碼")
+    check(page.locator(".panel .chart").count() == 0, "第一欄是一般數字（代碼）不畫圖")
+
+    ask_and_wait(page, answer(error="這個問題無法用目前的 ERP 資料回答：沒有薪資資料"), "薪水")
+    check("沒有可顯示的結果" in page.locator(".panel").inner_text(), "錯誤回答的面板提示")
+
+    # 寬 → 窄：面板收起，結果改放進卡片；再回到寬
+    ask_and_wait(page, TOP, "營收前三 again")
+    page.set_viewport_size({"width": 800, "height": 800})
+    page.wait_for_timeout(500)
+    check(not page.locator("#panel").is_visible() and page.locator("#layout.wide").count() == 0, "變窄後面板收起")
+    check(page.locator(".card.answer").last.locator("table").count() == 1 and page.locator(".card.answer").last.locator(".chart canvas").count() == 1, "變窄後卡片內含圖與表")
+    shot(page, "8_narrow_inline")
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.wait_for_selector(".panel .chart canvas")
+    check(page.locator("#panel").is_visible() and page.locator(".card.answer").last.locator("table").count() == 1, "變寬後恢復兩欄")
+    check(page.locator(".card.answer").last.locator(".chart").count() == 0, "變寬後卡片不重複圖表")
+
+    # 處理中：面板顯示骨架畫面
+    page.unroute("**/api/chat")
+    mock(page, TOP, delay_ms=1200)
+    page.fill("#input", "慢")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".panel .skeleton")
+    check(page.locator(".panel .skeleton").count() == 3, "寬螢幕處理中面板顯示骨架畫面")
+    page.wait_for_selector(".panel .chart canvas")
+
+    # 品牌設定
+    check(page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()") == "#0f4c81", "品牌色來自 CONFIG")
+    check(page.evaluate("document.getElementById('brandName').textContent") == page.evaluate("CONFIG.brand.name"), "名稱來自 CONFIG")
+    page.close()
+
+    # 圖表的 XSS：類別名稱與數列名稱含惡意 HTML，hover 出 tooltip 也不能執行
+    page = fresh(browser, width=1280)
+    evil = '<img src=x onerror="window.__xss=7">'
+    mock(page, answer(columns=[evil, evil + "值"], row_count=3, rows=[[evil, 10], [evil + "2", 20], [evil + "3", 15]]))
+    page.fill("#input", "惡意圖表")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".panel .chart canvas")
+    box = page.locator(".panel .chart").bounding_box()
+    for fx in (0.25, 0.5, 0.75):
+        page.mouse.move(box["x"] + box["width"] * fx, box["y"] + box["height"] * 0.6)
+        page.wait_for_timeout(250)
+    page.wait_for_timeout(400)
+    check(page.evaluate("window.__xss") is None, "圖表 tooltip 的惡意 HTML 不會被執行")
+    check(page.locator(".panel .chart img").count() == 0, "圖表內沒有被注入的 img")
     page.close()
 
     browser.close()
