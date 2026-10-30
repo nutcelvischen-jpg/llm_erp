@@ -7,6 +7,7 @@
 | T03 LM Studio 與煙霧測試 | ✅ 完成 | 2026-10-30 | ALL PASS；約 90–99 tok/s；dim 1024 |
 | T04 backend 骨架 | ✅ 完成 | 2026-10-30 | /health 回 ok: true |
 | T05 ERP schema | ✅ 完成 | 2026-10-30 | erp schema 9 張表；host 端 db.ping() 為 True |
+| T06 app schema | ✅ 完成 | 2026-10-30 | app schema 4 張表 |
 
 ## T01 建立 repo 骨架
 與 TASKS.md 的差異（版本與依賴未動）：
