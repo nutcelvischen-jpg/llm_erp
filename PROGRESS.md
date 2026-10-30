@@ -8,6 +8,8 @@
 | T04 backend 骨架 | ✅ 完成 | 2026-10-30 | /health 回 ok: true |
 | T05 ERP schema | ✅ 完成 | 2026-10-30 | erp schema 9 張表；host 端 db.ping() 為 True |
 | T06 app schema | ✅ 完成 | 2026-10-30 | app schema 4 張表 |
+| T07 假資料產生器 | ✅ 完成 | 2026-10-30 | 6000 訂單；5 個劇情驗證通過 |
+| T08 唯讀 View 與 schema 文件 | ✅ 完成 | 2026-10-30 | llm_reader 只能讀 4 個 View，寫入被拒 |
 
 ## T01 建立 repo 骨架
 與 TASKS.md 的差異（版本與依賴未動）：

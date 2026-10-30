@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     embed_dim: int = 1024
     llm_timeout: int = 120
     pg_dsn: str
+    pg_dsn_readonly: str = "postgresql+psycopg://llm_reader:llm_reader@localhost:5432/erp_poc"
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "erp_docs"
     rerank_model: str = "BAAI/bge-reranker-v2-m3"

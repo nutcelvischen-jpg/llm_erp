@@ -8,3 +8,4 @@ data/seed/*.csv
 .ruff_cache/
 models/
 *.egg-info/
+data/seed/out/
