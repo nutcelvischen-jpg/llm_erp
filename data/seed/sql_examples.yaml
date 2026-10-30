@@ -1,0 +1,191 @@
+# Text-to-SQL few-shot 範例：question → sql。
+# 規則：只用四個 View；中文識別字一律加雙引號；日期用 CURRENT_DATE；每句都必須在資料庫實際跑過且有結果
+#（tests/test_sql_examples.py 會驗證）。問題措辭刻意多樣，讓相似度檢索能涵蓋不同說法。
+
+- question: 今年營收最高的 3 個客戶
+  tags: [營收, TopN, 客戶]
+  sql: |
+    SELECT "客戶名稱", ROUND(SUM("銷售金額"), 0) AS "營收"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)
+    GROUP BY "客戶名稱" ORDER BY "營收" DESC LIMIT 3
+
+- question: 這個月的營收是多少？
+  tags: [營收, 本月]
+  sql: |
+    SELECT ROUND(SUM("銷售金額"), 0) AS "本月營收", COUNT(DISTINCT "訂單編號") AS "訂單數"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('month', CURRENT_DATE)
+
+- question: 上個月的營收跟毛利率各是多少
+  tags: [營收, 毛利率, 上月]
+  sql: |
+    SELECT ROUND(SUM("銷售金額"), 0) AS "營收", ROUND(SUM("毛利"), 0) AS "毛利",
+           ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) AS "毛利率(%)"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+      AND "訂單日期" < DATE_TRUNC('month', CURRENT_DATE)
+
+- question: 今年到目前為止的營收，跟去年同期比起來如何？
+  tags: [營收, 同期比較]
+  sql: |
+    SELECT ROUND(SUM("銷售金額") FILTER (WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)), 0) AS "今年累計",
+           ROUND(SUM("銷售金額") FILTER (WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+                                          AND "訂單日期" <= CURRENT_DATE - INTERVAL '1 year'), 0) AS "去年同期"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+
+- question: 哪個客戶今年的營收比去年同期掉最多？
+  tags: [營收, 同期比較, 客戶, 下滑]
+  sql: |
+    WITH cur AS (
+      SELECT "客戶名稱", SUM("銷售金額") AS rev FROM "v_銷售明細"
+      WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY "客戶名稱"
+    ), prev AS (
+      SELECT "客戶名稱", SUM("銷售金額") AS rev FROM "v_銷售明細"
+      WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+        AND "訂單日期" <= CURRENT_DATE - INTERVAL '1 year'
+      GROUP BY "客戶名稱"
+    )
+    SELECT COALESCE(c."客戶名稱", p."客戶名稱") AS "客戶名稱",
+           ROUND(COALESCE(c.rev, 0), 0) AS "今年累計", ROUND(COALESCE(p.rev, 0), 0) AS "去年同期",
+           ROUND(COALESCE(c.rev, 0) - COALESCE(p.rev, 0), 0) AS "差額"
+    FROM cur c FULL JOIN prev p ON c."客戶名稱" = p."客戶名稱"
+    ORDER BY "差額" ASC LIMIT 10
+
+- question: 今年的毛利率比去年同期好還是差？
+  tags: [毛利率, 同期比較]
+  sql: |
+    SELECT ROUND(100.0 * SUM("毛利") FILTER (WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE))
+                 / SUM("銷售金額") FILTER (WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)), 1) AS "今年毛利率(%)",
+           ROUND(100.0 * SUM("毛利") FILTER (WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+                                              AND "訂單日期" <= CURRENT_DATE - INTERVAL '1 year')
+                 / SUM("銷售金額") FILTER (WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+                                            AND "訂單日期" <= CURRENT_DATE - INTERVAL '1 year'), 1) AS "去年同期毛利率(%)"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+
+- question: 各季度的毛利率變化（今年和去年）
+  tags: [毛利率, 季度, 趨勢]
+  sql: |
+    SELECT EXTRACT(YEAR FROM "訂單日期")::int AS "年", EXTRACT(QUARTER FROM "訂單日期")::int AS "季",
+           ROUND(SUM("銷售金額"), 0) AS "營收", ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) AS "毛利率(%)"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+    GROUP BY 1, 2 ORDER BY 1, 2
+
+- question: 今年每位業務的業績排名
+  tags: [業績, 業務, 排名]
+  sql: |
+    SELECT "負責業務", COUNT(DISTINCT "訂單編號") AS "訂單數", ROUND(SUM("銷售金額"), 0) AS "營收",
+           ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) AS "毛利率(%)"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)
+    GROUP BY "負責業務" ORDER BY "營收" DESC
+
+- question: 各產品類別佔今年營收的比例
+  tags: [營收, 產品類別, 占比]
+  sql: |
+    SELECT "產品類別", ROUND(SUM("銷售金額"), 0) AS "營收",
+           ROUND(100.0 * SUM("銷售金額") / SUM(SUM("銷售金額")) OVER (), 1) AS "占比(%)"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)
+    GROUP BY "產品類別" ORDER BY "營收" DESC
+
+- question: 最近 6 個月每個月的營收趨勢
+  tags: [營收, 月趨勢]
+  sql: |
+    SELECT TO_CHAR("訂單日期", 'YYYY-MM') AS "月份", ROUND(SUM("銷售金額"), 0) AS "營收",
+           ROUND(100.0 * SUM("毛利") / SUM("銷售金額"), 1) AS "毛利率(%)"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+    GROUP BY 1 ORDER BY 1
+
+- question: 今年賣得最多的 5 個料號是哪些？
+  tags: [產品, TopN, 銷量]
+  sql: |
+    SELECT "料號", "品名", SUM("數量") AS "銷售數量", ROUND(SUM("銷售金額"), 0) AS "營收"
+    FROM "v_銷售明細"
+    WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE)
+    GROUP BY "料號", "品名" ORDER BY "營收" DESC LIMIT 5
+
+- question: 鴻遠機械今年每個月的營收，跟去年比
+  tags: [營收, 特定客戶, 同期比較, 月趨勢]
+  sql: |
+    SELECT EXTRACT(MONTH FROM "訂單日期")::int AS "月份",
+           ROUND(SUM("銷售金額") FILTER (WHERE EXTRACT(YEAR FROM "訂單日期") = EXTRACT(YEAR FROM CURRENT_DATE)), 0) AS "今年",
+           ROUND(SUM("銷售金額") FILTER (WHERE EXTRACT(YEAR FROM "訂單日期") = EXTRACT(YEAR FROM CURRENT_DATE) - 1), 0) AS "去年"
+    FROM "v_銷售明細"
+    WHERE "客戶名稱" = '鴻遠機械' AND "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+    GROUP BY 1 ORDER BY 1
+
+- question: 目前逾期超過 60 天的應收帳款有哪些客戶？
+  tags: [應收, 逾期]
+  sql: |
+    SELECT "客戶名稱", COUNT(*) AS "張數", ROUND(SUM("未收金額"), 0) AS "未收金額", MAX("逾期天數") AS "最長逾期天數"
+    FROM "v_應收帳款"
+    WHERE "未收金額" > 0 AND "逾期天數" > 60
+    GROUP BY "客戶名稱" ORDER BY "未收金額" DESC
+
+- question: 哪些客戶欠我們最多錢？前 5 名
+  tags: [應收, TopN, 未收]
+  sql: |
+    SELECT "客戶名稱", COUNT(*) FILTER (WHERE "未收金額" > 0) AS "未收張數", ROUND(SUM("未收金額"), 0) AS "未收總額"
+    FROM "v_應收帳款"
+    GROUP BY "客戶名稱" HAVING SUM("未收金額") > 0
+    ORDER BY "未收總額" DESC LIMIT 5
+
+- question: 應收帳款的帳齡分佈
+  tags: [應收, 帳齡]
+  sql: |
+    SELECT CASE WHEN "逾期天數" BETWEEN 1 AND 30 THEN '1-30 天'
+                WHEN "逾期天數" BETWEEN 31 AND 60 THEN '31-60 天'
+                ELSE '61 天以上' END AS "逾期區間",
+           COUNT(*) AS "張數", ROUND(SUM("未收金額"), 0) AS "未收金額"
+    FROM "v_應收帳款"
+    WHERE "未收金額" > 0 AND "逾期天數" > 0
+    GROUP BY 1 ORDER BY MIN("逾期天數")
+
+- question: 台陽科技有哪些逾期未收的發票？
+  tags: [應收, 逾期, 特定客戶]
+  sql: |
+    SELECT "發票號碼", "發票日期", "到期日", ROUND("未收金額", 0) AS "未收金額", "逾期天數"
+    FROM "v_應收帳款"
+    WHERE "客戶名稱" = '台陽科技' AND "未收金額" > 0 AND "逾期天數" > 0
+    ORDER BY "逾期天數" DESC
+
+- question: 哪些料號超過 180 天沒有異動？壓了多少庫存金額？
+  tags: [庫存, 呆滯]
+  sql: |
+    SELECT "料號", "品名", "現有庫存", ROUND("庫存金額", 0) AS "庫存金額", "未異動天數"
+    FROM "v_庫存狀況"
+    WHERE "未異動天數" >= 180 AND "現有庫存" > 0
+    ORDER BY "庫存金額" DESC LIMIT 50
+
+- question: 依目前待出貨的訂單，哪些料號會缺料？建議採購多少？
+  tags: [庫存, 缺料, 採購建議]
+  sql: |
+    SELECT "料號", "品名", "現有庫存", "在途數量", "待出貨數量",
+           GREATEST("待出貨數量" - "現有庫存" - "在途數量", 0) AS "缺口",
+           GREATEST("待出貨數量" - "現有庫存" - "在途數量", 0) + "安全庫存" AS "建議採購量",
+           "供應商", "供應商交期天數"
+    FROM "v_庫存狀況"
+    WHERE "現有庫存" + "在途數量" < "待出貨數量" OR "現有庫存" < "安全庫存"
+    ORDER BY "缺口" DESC
+
+- question: 各供應商的準時交貨率
+  tags: [採購, 供應商, 交期]
+  sql: |
+    SELECT "供應商", COUNT(*) AS "已收貨筆數",
+           ROUND(100.0 * COUNT(*) FILTER (WHERE "實際到貨日" <= "預計到貨日") / COUNT(*), 1) AS "準時率(%)"
+    FROM "v_採購明細"
+    WHERE "採購狀態" = '已收貨'
+    GROUP BY "供應商" ORDER BY "準時率(%)" DESC
+
+- question: 今年各供應商的採購金額
+  tags: [採購, 供應商, 金額]
+  sql: |
+    SELECT "供應商", COUNT(DISTINCT "採購單號") AS "採購單數", ROUND(SUM("採購金額"), 0) AS "採購金額"
+    FROM "v_採購明細"
+    WHERE "採購日期" >= DATE_TRUNC('year', CURRENT_DATE) AND "採購狀態" <> '取消'
+    GROUP BY "供應商" ORDER BY "採購金額" DESC

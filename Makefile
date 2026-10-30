@@ -1,4 +1,4 @@
-.PHONY: setup up down logs dev test test-llm test-db seed ingest eval-sql eval-rag lint
+.PHONY: setup up down logs dev test test-llm test-db seed ingest eval-sql eval-rag lint load-examples
 
 setup:
 	uv venv --python 3.12 --allow-existing
@@ -40,3 +40,6 @@ eval-rag:
 
 lint:
 	uv run ruff check backend scripts
+
+load-examples:
+	uv run python scripts/load_sql_examples.py

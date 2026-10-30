@@ -53,5 +53,6 @@ DO $$ BEGIN
 END $$;
 ALTER ROLE llm_reader SET default_transaction_read_only = on;  -- 多一層保險：連線預設唯讀
 ALTER ROLE llm_reader SET statement_timeout = '10s';
+ALTER ROLE llm_reader SET search_path = erp;  -- 不帶 erp. 前綴也能找到 View（schema_doc.md 的寫法）
 GRANT USAGE ON SCHEMA erp TO llm_reader;
 GRANT SELECT ON v_銷售明細, v_應收帳款, v_庫存狀況, v_採購明細 TO llm_reader;
