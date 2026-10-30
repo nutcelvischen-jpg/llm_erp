@@ -5,6 +5,7 @@
 | T01 建立 repo 骨架 | ✅ 完成 | 2026-10-30 | Mac 與容器皆輸出 `ok` |
 | T02 docker-compose | ✅ 完成 | 2026-10-30 | 3 容器 running；qdrant 回 JSON；psql 回 1 |
 | T03 LM Studio 與煙霧測試 | ✅ 完成 | 2026-10-30 | ALL PASS；約 90–99 tok/s；dim 1024 |
+| T04 backend 骨架 | ✅ 完成 | 2026-10-30 | /health 回 ok: true |
 
 ## T01 建立 repo 骨架
 與 TASKS.md 的差異（版本與依賴未動）：
