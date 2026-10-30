@@ -27,6 +27,7 @@ dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6"]
 testpaths = ["backend/tests"]
 markers = ["llm: 需要真實 LM Studio 的測試", "db: 需要 Postgres 的測試"]
 addopts = "-m 'not llm and not db'"
+asyncio_default_fixture_loop_scope = "function"
 [tool.ruff]
 line-length = 100
 [tool.setuptools.packages.find]
