@@ -675,6 +675,30 @@ class SqlAnswer:
 
 ---
 
+### T13b 最小聊天端點（提前的 T25-lite，讓 Open WebUI 提早可用）
+**目標**：在 Open WebUI（http://localhost:3000）問商業問題，得到表格與 SQL。此時只接 Text-to-SQL，RAG 與 Agent 路由在 T22–T25 再接上。
+**步驟**
+1. `backend/app/api/openai_compat.py`（用 `APIRouter`，在 `main.py` 以 `app.include_router` 掛上）：
+   - `GET /v1/models` → `{"object":"list","data":[{"id":"erp-assistant","object":"model","owned_by":"local"}]}`
+   - `POST /v1/chat/completions`：取 `messages` 中最後一則 `role=user` 的內容當 question，呼叫 `text2sql.run(question)`。
+     - `stream=false`：回標準 ChatCompletion JSON（`choices[0].message.content` 為 Markdown）。
+     - `stream=true`：SSE。先送一個內容為「🔎 正在查詢 ERP…\n\n」的 chunk，再送完整 Markdown 的 chunk，最後送 `data: [DONE]`。（不做 token 級串流。）
+   - 另有 Open WebUI 會送來的「產生標題／追問建議」請求（內容不是商業問題）：偵測到 messages 內容以 `### Task:` 開頭時，直接用 `llm.chat` 回答，不要走 Text-to-SQL。
+2. Markdown 組裝函式 `format_answer(ans: SqlAnswer) -> str`（獨立成純函式以便單元測試）：
+   - 失敗（`ans.error`）：「這次查詢失敗：{原因}」，並附上實際執行的 SQL（若有）。
+   - 成功：一段結論（`ans.explanation`）＋ Markdown 表格（最多 20 列，超過則加「僅顯示前 20 列，共 N 列」）＋ `<details><summary>查詢的 SQL</summary>` 包住的 SQL 程式碼區塊。
+   - 數字用千分位；日期用 `YYYY-MM-DD`；None 顯示為 `-`。
+3. `Makefile` 的 `dev` 目標改成 `uv run uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000`（Docker 內的 Open WebUI 需連到主機上的 backend；只綁 127.0.0.1 會連不上）。
+4. 完成後 `docker compose restart open-webui`，並在 Open WebUI 的「管理員設定 → 外部連線」確認 OpenAI 連線指向 `http://host.docker.internal:8000/v1`。
+
+**測試**
+- 單元（不需 LLM）：`format_answer` 的成功／失敗／超過 20 列／含 None 四個案例；`/v1/models` 回傳格式（用 FastAPI `TestClient`）。
+- `@pytest.mark.llm @pytest.mark.db`：`stream=false` 問「今年營收最高的 3 個客戶」，回應含 `|` 表格與 `<details>`；`stream=true` 回應最後一行為 `data: [DONE]`。
+
+**驗收**：`make dev` 後開啟 http://localhost:3000，模型下拉出現 `erp-assistant`；問「今年營收最高的三個客戶」，看到結論、表格與可展開的 SQL，且 15 秒內回完。
+
+---
+
 ### T14 Text-to-SQL 評估腳本
 **目標**：量化正確率，之後每次改 prompt 都要跑。
 **步驟**
@@ -820,7 +844,7 @@ route
 ---
 
 ### T25 OpenAI 相容端點 `api/openai_compat.py`
-**目標**：讓 Open WebUI 當成一般模型使用。
+**目標**：讓 Open WebUI 當成一般模型使用。（**T13b 已先做出基本版端點**，本任務改為：把 `text2sql.run` 換成 `agent.run_agent`、串接 audit、加上 `X-Session-Id`／history 處理與 `/v1/feedback`；`format_answer` 沿用 T13b。）
 **端點**
 - `GET /v1/models` → `[{"id":"erp-assistant","object":"model"}]`
 - `POST /v1/chat/completions`：取 `messages` 最後一則 user 為 question，其餘為 history；`session_id` 取 header `X-Session-Id` 或 hash(前 3 則訊息)。
