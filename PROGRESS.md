@@ -32,6 +32,7 @@
 | T29 LINE 推播 | ✅ 完成（無 token 模式） | 2026-10-31 | Elvis 決定先不接 LINE |
 | T30 Demo 範例與講稿 | ✅ 完成 | 2026-10-31 | 6 題全對、< 15 秒；截圖 |
 | T31 端到端驗收 | ✅ 完成 | 2026-10-31 | 從零重建後全綠、兩項評估達標 |
+| T32 交付文件 | ✅ 完成 | 2026-10-31 | README.md、SPEC.md 第 7 節 |
 
 ## T01 建立 repo 骨架
 與 TASKS.md 的差異（版本與依賴未動）：
@@ -216,3 +217,8 @@
    | 6 | 5.4 | 依《人資_工作規則與加班費辦法》：時薪 = 月薪 ÷ 240，倍率 1.34／1.67／2.67 倍 |
    - 第 4 題合計 2,902,034 是表格內已四捨五入金額的和；直接對原始金額加總是 2,902,033（差 1 元）。
    - **資料隨 seed 日期變動**：`generate.py` 以「今天」為基準產生 2 年資料，10/30 與 10/31 seed 的金額不同（劇情相同）。`docs/DEMO_SCRIPT.md` 已改用本次數字並註明此事；截圖 `docs/screenshots/demo_1~6.png` 換成本次冷啟動的畫面。要固定數字可用 `SEED_TODAY=YYYY-MM-DD make seed`。
+
+## T32 交付文件 ✅
+- `README.md`：10 分鐘從零到 Demo（含 LM Studio 人工步驟、`make` 指令順序、Demo 與驗證）、架構圖、已知限制（AI 產生 SQL、數字檢查只查存在、RAG 正確率、路由、無權限、單人並行、資料隨 seed 日期、預警長度、LINE）、如何換模型（聊天／embedding 需重建向量／reranker）、如何接真實 ERP（View 指向客戶資料、非 Postgres 建議 ETL、唯讀帳號、範例與黃金題重做、文件、預警規則）。
+- `SPEC.md` 新增「7. PoC 實作狀態」：已實作案例、量測的正確率與延遲、與規格的差異（LM Studio、無 LangGraph、單頁網頁、AI SQL、jieba BM25、無 SSO）、正式導入前要補的事項。
+- 檢查：README 提到的 make 目標都存在；`make test` 362 passed。
