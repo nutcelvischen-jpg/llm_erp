@@ -65,6 +65,15 @@
   .wide .card.answer:hover { border-color: #b9c6d8; }
   .card.active { border-color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 18%, transparent); }
   .explain { margin: 0 0 10px; font-weight: 600; }
+  .explain.long { font-weight: 400; white-space: pre-wrap; line-height: 1.65; }
+  .warning { background: #fff7e0; border: 1px solid #f0d58a; color: #7a5a00; border-radius: 10px;
+    padding: 8px 12px; margin: 0 0 10px; font-size: 13px; font-weight: 600; }
+  .card .error + .explain, .explain + .error { margin-top: 10px; }
+  .sources ol { margin: 8px 0 0; padding-left: 22px; }
+  .sources li { margin-bottom: 8px; }
+  .src-title { font-weight: 600; }
+  .fb-status { font-size: 12px; color: var(--muted); }
+  .src-snippet { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
   .empty { color: var(--muted); margin: 0; }
   .hintline { margin: 8px 2px 0; font-size: 13px; color: var(--brand); }
 
@@ -171,6 +180,9 @@ const thread = $("thread"), chatBox = $("chat"), input = $("input"), sendBtn = $
 const wideQuery = window.matchMedia(`(min-width: ${CONFIG.wideBreakpoint}px)`);
 const entries = [];        // 每則回答 {data, card, question}
 let activeIdx = -1, busy = false, liveCharts = [];
+const sessionId = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+const history = [];        // 送給後端的前幾輪對話（只放記憶體），最多 6 輪
+const MAX_HISTORY = 12;
 
 document.title = CONFIG.brand.name;
 $("brandName").textContent = CONFIG.brand.name;
@@ -307,18 +319,32 @@ function renderSql(sql, open) {
   return d;
 }
 
+function buildSources(sources, open) {
+  const items = sources.map((x) => el("li", {}, [
+    el("span", { class: "src-title", text: `${x.file_name} 第 ${x.page} 頁${x.heading ? " › " + x.heading : ""}` }),
+    el("span", { class: "src-snippet", text: x.snippet || "" }),
+  ]));
+  const d = el("details", { class: "sources" }, [el("summary", { text: `文件來源（${sources.length}）` }), el("ol", {}, items)]);
+  if (open) d.setAttribute("open", "");
+  d.addEventListener("click", (e) => e.stopPropagation());
+  return d;
+}
+const hasTable = (d) => d.route !== "docs" && d.route !== "chat" && d.row_count > 0;
+const answerText = (d) => d.answer ?? d.explanation ?? "";
+
 // 完整的結果內容：圖表 + 表格 + SQL（窄螢幕放在卡片內；寬螢幕放在右側面板）
 function buildDetail(d, { limit, sqlOpen, sections }) {
   const frag = document.createDocumentFragment();
   const add = (title, node) => frag.append(sections ? el("div", { class: "section" }, [el("h3", { text: title }), node]) : node);
-  const spec = d.error ? null : chartSpec(d.columns, d.rows);
+  const spec = hasTable(d) ? chartSpec(d.columns, d.rows) : null;
   if (spec) {
     const div = el("div", { class: "chart", "data-chart-type": spec.type, "data-series": String(spec.series.length), "data-axes": String(Math.max(...spec.axis) + 1), role: "img", "aria-label": "結果圖表" });
     add("圖表", div);
     requestAnimationFrame(() => drawChart(div, spec));
   }
-  if (!d.error && d.row_count > 0) add("資料表", buildTable(d.columns, d.rows, limit, d.row_count));
+  if (hasTable(d)) add("資料表", buildTable(d.columns, d.rows, limit, d.row_count));
   if (d.sql) add("查詢的 SQL", renderSql(d.sql, sqlOpen));
+  if (sections && d.sources?.length) add("文件來源", buildSources(d.sources, true));
   return frag;
 }
 
@@ -335,7 +361,7 @@ function renderPanel() {
     return;
   }
   panel.append(el("div", { class: "panel-head" }, [el("h2", { text: "分析結果" }), el("p", { text: e.question })]));
-  if (e.data.error && !e.data.sql) {
+  if (!hasTable(e.data) && !e.data.sql && !e.data.sources?.length) {
     panel.append(el("div", { class: "section" }, el("p", { class: "empty", text: "這次查詢沒有可顯示的結果。" })));
   } else {
     panel.append(buildDetail(e.data, { limit: CONFIG.panelRows, sqlOpen: true, sections: true }));
@@ -353,19 +379,32 @@ function feedbackRow(d) {
   const row = el("div", { class: "foot" });
   if (typeof d.latency_ms === "number") {
     const rows = d.row_count > 0 ? `・共 ${d.row_count} 列` : "";
-    row.append(el("p", { class: "meta", text: `耗時 ${(d.latency_ms / 1000).toFixed(1)} 秒・嘗試 ${d.attempts} 次${rows}` }));
+    const tries = d.sql && d.attempts ? `・嘗試 ${d.attempts} 次` : "";
+    row.append(el("p", { class: "meta", text: `耗時 ${(d.latency_ms / 1000).toFixed(1)} 秒${tries}${rows}` }));
   }
   const up = el("button", { class: "fb", type: "button", "aria-pressed": "false", "aria-label": "這個回答有幫助", text: "👍 有幫助" });
   const down = el("button", { class: "fb", type: "button", "aria-pressed": "false", "aria-label": "這個回答需要改進", text: "👎 需改進" });
-  for (const [btn, other] of [[up, down], [down, up]]) {   // 目前只切換畫面狀態；寫入資料庫在 T25
-    btn.addEventListener("click", (e) => {
+  const status = el("span", { class: "fb-status", role: "status", text: "" });
+  for (const [btn, other, score] of [[up, down, 1], [down, up, -1]]) {   // 按下時寫入 app.feedback；取消不送出
+    btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const on = btn.getAttribute("aria-pressed") !== "true";
+      const prev = [btn.getAttribute("aria-pressed"), other.getAttribute("aria-pressed")];
       btn.setAttribute("aria-pressed", String(on));
       other.setAttribute("aria-pressed", "false");
+      status.textContent = "";
+      if (!on || !d.audit_id) return;
+      try {
+        const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audit_id: d.audit_id, score }) });
+        if (!res.ok) throw new Error(String(res.status));
+        status.textContent = "已記錄回饋";
+      } catch {
+        btn.setAttribute("aria-pressed", prev[0]); other.setAttribute("aria-pressed", prev[1]);
+        status.textContent = "回饋送出失敗";
+      }
     });
   }
-  row.append(up, down);
+  row.append(up, down, status);
   return row;
 }
 
@@ -374,12 +413,18 @@ function renderCard(e, idx) {
   card.replaceChildren();
   card.classList.add("answer");
   card.onclick = isWide() ? () => setActive(idx) : null;
-  if (d.error) {
+  const text = answerText(d);
+  if (d.error && !text) {
     card.append(el("div", { class: "error", role: "alert", text: d.error }));
     if (!isWide() && d.sql) card.append(renderSql(d.sql, false));
   } else {
-    if (d.explanation) card.append(el("p", { class: "explain", text: d.explanation }));
-    if (d.row_count === 0) {
+    if (d.warning && hasTable(d)) card.append(el("div", { class: "warning", text: d.warning }));
+    if (text) card.append(el("p", { class: text.length > 60 || text.includes("\n") ? "explain long" : "explain", text }));
+    if (d.error) card.append(el("div", { class: "error", role: "alert", text: `這部分查詢失敗：${d.error}` }));
+    if (d.sources?.length) card.append(buildSources(d.sources, false));
+    if (d.route === "docs" || d.route === "chat") {
+      // 文件與閒聊回答不顯示表格
+    } else if (d.row_count === 0) {
       card.append(el("p", { class: "empty", text: "查詢成功，但沒有符合條件的資料。" }));
       if (!isWide() && d.sql) card.append(renderSql(d.sql, false));
     } else if (isWide()) {
@@ -434,9 +479,11 @@ async function ask(question) {
   const ctrl = new AbortController();
   const abortTimer = setTimeout(() => ctrl.abort(), CONFIG.requestTimeoutMs);
   try {
-    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }), signal: ctrl.signal });
+    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, session_id: sessionId, history: history.slice(-MAX_HISTORY) }), signal: ctrl.signal });
     entry.data = res.ok ? await res.json()
       : { error: res.status === 422 ? "問題格式不符（長度需為 1–500 字）" : `伺服器回應錯誤（HTTP ${res.status}）` };
+    const reply = answerText(entry.data);
+    if (res.ok && reply) history.push({ role: "user", content: question }, { role: "assistant", content: reply.slice(0, 1000) });
   } catch (e) {
     entry.data = { error: e.name === "AbortError" ? "等待太久，請稍後再試或換個問法" : "無法連線到後端，請確認 make dev 正在執行" };
   } finally {

@@ -112,3 +112,11 @@
 - 測試 `backend/tests/test_audit.py`：單元（連不上資料庫不拋錯、分數驗證）+ `db`（寫入後讀回、回饋寫入讀回、不存在的 audit_id、排序與夾值）。
 - 驗收：`make test` 305 passed；`make test-db` 62 passed。
 - 備註：db 測試會在 `app.audit_log` 留下 session_id 為 `pytest-…` 的列（T23 的真實測試是 `pytest`），T26 統計時可用 session_id 排除。
+
+## T25 聊天 API 升級 ✅
+- `POST /api/chat` 改呼叫 `agent.run_agent`；body 新增 `history`（`{role: user|assistant, content}`，保留最後 6 輪 = 12 則，空白略過，其他 role → 422）、`session_id` ≤64 字。回傳保留舊欄位（`explanation` = `answer`、`attempts` 為 text2sql 實際嘗試次數），新增 `route`、`rewritten`、`answer`、`markdown`、`sources`、`warning`、`audit_id`。
+- `POST /api/feedback`：`{audit_id > 0, score: 1|-1, comment ≤1000}` → `audit.add_feedback`；寫入失敗（含 audit_id 不存在）回 503。
+- 網頁：送出 `session_id`（頁面記憶體）與前幾輪對話；回答顯示多行文字、`sources` 可展開來源列表（檔名＋頁碼＋標題＋片段；寬螢幕面板預設展開）；`route` 為 docs／chat 時不顯示表格；sql 結果顯示黃色「AI 即時產生」警示；部分失敗時同時顯示回答與「這部分查詢失敗」；👍／👎 真的呼叫 `/api/feedback`（取消不送、失敗還原按鈕並提示）；有 SQL 才顯示嘗試次數。
+- `scripts/check_frontend.py` 新增 19 項（共 85 項全過）：docs 無表格、來源展開與內容、session／history 傳送、回饋送出／取消／失敗、警示、部分失敗、寬螢幕來源面板、回答與來源的 XSS。執行方式：`uv run --with playwright python scripts/check_frontend.py`（playwright 不在專案依賴）。
+- 驗收：`make test` 316 passed；`make test-llm` 24 passed（含三題 Demo 打真實 API 並送回饋）；真實瀏覽器開 http://localhost:8000：「今年營收最高的三個客戶」→ 表格（華發實業 11,979,390／鴻遠機械／億達企業）＋警示＋SQL，2.5 秒；「鴻遠機械的合約，延遲交貨罰款怎麼算？」→ 文字回答（0.3%、10% 上限）＋來源「銷售合約_鴻遠機械.pdf 第 2 頁 › 第五條」，10.4 秒（dev server 第一次載入 reranker）。
+- 備註：`/health` 顯示 LM Studio 另外載入了 `phonon-40m-multilingual`，不是本專案的模型，會多占記憶體。

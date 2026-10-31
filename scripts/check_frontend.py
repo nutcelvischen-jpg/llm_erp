@@ -306,6 +306,90 @@ with sync_playwright() as p:
     check(page.locator(".panel .chart img").count() == 0, "圖表內沒有被注入的 img")
     page.close()
 
+    # ================= T25：Agent 回答（route、來源、警示、回饋、對話脈絡）=================
+    SRC = [{"file_name": "銷售合約_鴻遠機械.pdf", "page": 2, "heading": "第五條（延遲交貨之處理）", "snippet": "每逾一日…0.3%"},
+           {"file_name": "銷售合約_鴻遠機械.pdf", "page": 3, "heading": "", "snippet": "採購預測"}]
+    DOCS = answer(route="docs", answer="1. 每逾一日 0.3% [來源 1]\n2. 上限 10% [來源 1]", sources=SRC, audit_id=11, attempts=0)
+    page = fresh(browser)
+    reqs = mock(page, DOCS)
+    fb = []
+    page.route("**/api/feedback", lambda r: fb.append(json.loads(r.request.post_data)) or r.fulfill(
+        status=200, content_type="application/json", body='{"ok": true, "id": 1}'))
+    page.fill("#input", "鴻遠罰款")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".sources")
+    card = page.locator(".card.answer").last
+    check(card.locator("table").count() == 0 and card.locator(".empty").count() == 0, "docs 回答不顯示表格與空結果提示")
+    check("上限 10%" in card.locator(".explain").inner_text() and "long" in card.locator(".explain").get_attribute("class"), "docs 回答多行文字")
+    check(card.locator(".sources").get_attribute("open") is None, "來源預設收合")
+    card.locator(".sources summary").click()
+    check(card.locator(".sources li").count() == 2 and "文件來源（2）" in card.locator(".sources summary").inner_text(), "來源列表可展開")
+    check("銷售合約_鴻遠機械.pdf 第 2 頁 › 第五條（延遲交貨之處理）" in card.locator(".sources li").first.inner_text(), "來源顯示檔名、頁碼與標題")
+    check("0.3%" in card.locator(".src-snippet").first.inner_text(), "來源顯示片段")
+    check("嘗試" not in card.locator(".meta").inner_text(), "沒有 SQL 時不顯示嘗試次數")
+    check(reqs[0]["session_id"] and reqs[0]["history"] == [], "第一題送出 session_id 與空的 history")
+    shot(page, "9_docs_sources")
+
+    card.locator(".fb").nth(1).click()
+    page.wait_for_function("document.querySelector('.card.answer:last-child .fb-status')?.textContent === '已記錄回饋'")
+    check(fb == [{"audit_id": 11, "score": -1}], "👎 呼叫 /api/feedback")
+    card.locator(".fb").nth(1).click()
+    page.wait_for_timeout(200)
+    check(len(fb) == 1 and card.locator(".fb").nth(1).get_attribute("aria-pressed") == "false", "取消回饋不重複送出")
+
+    page.unroute("**/api/chat")
+    reqs = mock(page, answer(route="sql", answer="今年營收最高的 3 個客戶", sql="SELECT 1", columns=["客戶名稱", "營收"],
+                             rows=[["甲", 3], ["乙", 2]], row_count=2, warning="AI 即時產生的查詢，請查核 SQL 與結果", audit_id=12))
+    page.fill("#input", "那營收呢")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".warning")
+    check(reqs[0]["history"] == [{"role": "user", "content": "鴻遠罰款"}, {"role": "assistant", "content": DOCS["answer"]}], "第二題帶上前一輪對話")
+    check(reqs[0]["session_id"] == page.evaluate("sessionId"), "同一頁面沿用 session_id")
+    check("AI 即時產生" in page.locator(".warning").inner_text() and page.locator(".card.answer").last.locator("table").count() == 1, "sql 回答顯示黃色警示與表格")
+
+    page.unroute("**/api/feedback")
+    page.route("**/api/feedback", lambda r: r.fulfill(status=503, content_type="application/json", body='{"detail": "x"}'))
+    last = page.locator(".card.answer").last
+    last.locator(".fb").first.click()
+    page.wait_for_function("document.querySelector('.card.answer:last-child .fb-status')?.textContent === '回饋送出失敗'")
+    check(last.locator(".fb").first.get_attribute("aria-pressed") == "false", "回饋失敗時恢復按鈕狀態")
+
+    page.unroute("**/api/chat")
+    mock(page, answer(route="both", answer="依合約逾期 60 日可暫停出貨 [來源 1]", sources=SRC[:1],
+                      error="數據查詢失敗：無法連線資料庫"))
+    page.fill("#input", "部分失敗")
+    page.press("#input", "Enter")
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 3")
+    page.wait_for_timeout(300)
+    last = page.locator(".card.answer").last
+    check("暫停出貨" in last.locator(".explain").inner_text() and "這部分查詢失敗" in last.locator(".error").inner_text(), "部分失敗：顯示回答與失敗提示")
+    page.close()
+
+    # 寬螢幕：docs 回答的面板顯示來源
+    page = fresh(browser, width=1280)
+    mock(page, DOCS)
+    page.fill("#input", "鴻遠罰款")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".panel .sources")
+    check(page.locator(".panel .sources").get_attribute("open") is not None and page.locator(".panel .sources li").count() == 2, "寬螢幕面板顯示展開的來源")
+    check(page.locator(".panel table").count() == 0 and page.locator(".panel .chart").count() == 0, "docs 面板沒有表格與圖表")
+    shot(page, "10_wide_docs")
+    page.close()
+
+    # 來源與回答的 XSS
+    page = fresh(browser)
+    evil = '<img src=x onerror="window.__xss=9">'
+    mock(page, answer(route="docs", answer=evil, sources=[{"file_name": evil, "page": 1, "heading": evil, "snippet": evil}],
+                      warning=evil, error=evil))
+    page.fill("#input", "惡意來源")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".sources")
+    page.locator(".sources summary").click()
+    page.wait_for_timeout(300)
+    check(page.evaluate("window.__xss") is None and page.locator("#thread img").count() == 0, "回答與來源的惡意 HTML 不會被執行")
+    check(evil in page.locator(".sources li").first.inner_text(), "來源原樣顯示為文字")
+    page.close()
+
     browser.close()
 
 print(f"前端檢查全部通過（{len(passed)} 項）")

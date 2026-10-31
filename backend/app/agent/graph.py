@@ -36,6 +36,7 @@ class AgentResult:
     columns: list[str] = field(default_factory=list)
     rows: list[list] = field(default_factory=list)
     row_count: int = 0
+    attempts: int = 0
     sources: list[dict] = field(default_factory=list)
     latency_ms: int = 0
     tokens: dict = field(default_factory=lambda: {"prompt": 0, "completion": 0})
@@ -90,6 +91,7 @@ class _Sql:
     rows: list[list] = field(default_factory=list)
     row_count: int = 0
     error: str | None = None
+    attempts: int = 0
 
 
 @dataclass
@@ -110,14 +112,15 @@ def run_sql(question: str, deps: Deps) -> _Sql:
         log.exception("sql 分支失敗")
         return _Sql(error=f"數據查詢失敗：{e}")
     if a.error:
-        return _Sql(applicable=not a.error.startswith(_NOT_APPLICABLE), sql=a.sql, error=a.error)
+        return _Sql(applicable=not a.error.startswith(_NOT_APPLICABLE), sql=a.sql, error=a.error,
+                    attempts=a.attempts)
     expl = (a.explanation or "").strip()
     bad = numcheck.unsupported_numbers(expl, [question, a.sql], a.rows)
     if bad or not expl:
         if bad:
             log.warning("查詢說明含未獲支持的數字 %s，改用固定句型", bad)
         expl = f"查詢結果如下表（共 {a.row_count:,} 列）。"
-    return _Sql(True, True, expl, a.sql, list(a.columns), list(a.rows), a.row_count)
+    return _Sql(True, True, expl, a.sql, list(a.columns), list(a.rows), a.row_count, None, a.attempts)
 
 
 def run_docs(question: str, deps: Deps) -> _Docs:
@@ -266,7 +269,7 @@ def run_agent(question: str, history: list[dict] | None = None, session_id: str 
     res = AgentResult(
         markdown=build_markdown(answer, s, d, failures), route=rt.kind, answer=answer, rewritten=q,
         sql=s.sql if s else "", columns=s.columns if s and s.ok else [], rows=s.rows if s and s.ok else [],
-        row_count=s.row_count if s and s.ok else 0, sources=d.sources if d and d.ok else [],
+        row_count=s.row_count if s and s.ok else 0, attempts=s.attempts if s else 0, sources=d.sources if d and d.ok else [],
         tokens=tokens, warning=AI_SQL_WARNING if s and s.ok else None,
         error="；".join(failures) or None,
     )
