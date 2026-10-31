@@ -91,3 +91,9 @@
 - `RAG_SYSTEM` 第 5 條改為「關鍵內容照片段原文用字逐字引用（例：原文『逾 3 日』不要改寫成『超過 3 天』）」。
 - `make eval-rag` 兩輪：檢索 25/25、答案 **22/25 = 88%**、**23/25 = 92%**（原 84%）、拒答 5/5；平均 2.8–3.2 秒。
 - 仍會失敗的：R02（答「30 日內驗證成效」，phrase「追蹤」）、R22（答「事假每年可請 14 日」，phrase「每年 14 日」）、偶發 R01（答「三層」，phrase「3 層」）。
+
+## T22 意圖路由 ✅
+- `backend/app/agent/router.py`：`route(question, history) -> Route(kind, rewritten, source)`；`ROUTER_SYSTEM`（`agent/prompts.py`）列四類定義各 5 例句與改寫規則；history 取最後 6 輪、每則截 300 字。
+- 關鍵字保底照規格：文件詞（合約／SOP／規定／辦法／條款／規格）→ docs；數字詞（多少／幾／排名／金額／庫存／逾期／營收）→ sql；與 LLM 結果取聯集（sql+docs=both；有其他類時 chat 讓位）。規則同時套用原句與改寫後的句子。LLM 失敗或回傳不合法 kind 時只用規則。
+- 驗收：`make test` 287 passed（規則 5 案例 + 合併、失敗退回等）；`make test-llm` 21 passed（sql、docs、「那去年呢」改寫成「鴻遠機械去年營收」）。
+- 觀察：規格的數字詞很寬，「特休幾天」「事假一年可以請幾天」「GEAR-M2-40T 的最低訂購量是多少」LLM 判 docs，但被規則升為 both（會多跑一次 SQL，約 +2 秒）。照規格保留；T23 的 both 合併時 SQL 查無資料就只用文件回答。若要收斂，可把「幾／多少」改為只在沒有文件詞時才觸發（需 Elvis 決定）。
