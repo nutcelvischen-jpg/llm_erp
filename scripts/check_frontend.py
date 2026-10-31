@@ -306,6 +306,17 @@ with sync_playwright() as p:
     check(page.locator(".panel .chart img").count() == 0, "圖表內沒有被注入的 img")
     page.close()
 
+    # both 但數字部分沒有執行查詢（只有文件回答）：不顯示空結果提示
+    page = fresh(browser)
+    mock(page, answer(route="both", answer="依合約逾期超過 60 日得暫停出貨 [來源 1]",
+                      sources=[{"file_name": "銷售合約_台陽科技.pdf", "page": 3, "heading": "", "snippet": "60 日"}]))
+    page.fill("#input", "台陽暫停出貨")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".sources")
+    card = page.locator(".card.answer").last
+    check(card.locator(".empty").count() == 0 and card.locator("table").count() == 0, "both 沒執行查詢時不顯示空結果提示")
+    page.close()
+
     # ================= T25：Agent 回答（route、來源、警示、回饋、對話脈絡）=================
     SRC = [{"file_name": "銷售合約_鴻遠機械.pdf", "page": 2, "heading": "第五條（延遲交貨之處理）", "snippet": "每逾一日…0.3%"},
            {"file_name": "銷售合約_鴻遠機械.pdf", "page": 3, "heading": "", "snippet": "採購預測"}]

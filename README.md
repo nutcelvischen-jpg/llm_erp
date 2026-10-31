@@ -39,6 +39,7 @@ make dev                   # http://localhost:8000
 
 ### 3. Demo
 - 開 http://localhost:8000，點 6 個範例問題。講稿、預期畫面與備援見 **`docs/DEMO_SCRIPT.md`**。
+- 連續追問的情境劇（圖表＋合約／規章＋兩者合併判斷）見 **`docs/DEMO_STORIES.md`**。
 - Demo 前先把 6 題預跑一次暖機（第一次查文件要載入 reranker，約 10 秒；之後 3–9 秒）。
 - 每週預警手動觸發：`curl -s -X POST localhost:8000/admin/jobs/dead_stock/run`
 

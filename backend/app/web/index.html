@@ -496,8 +496,8 @@ function renderCard(e, idx) {
     }
     if (d.error) card.append(el("div", { class: "error", role: "alert", text: `這部分查詢失敗：${d.error}` }));
     if (d.sources?.length) card.append(buildSources(d.sources, false));
-    if (d.route === "docs" || d.route === "chat" || (d.mode && d.mode !== "template")) {
-      // 文件、閒聊、反問、確認、未命中都不顯示表格
+    if (d.route === "docs" || d.route === "chat" || (d.mode && d.mode !== "template") || !(d.columns && d.columns.length)) {
+      // 文件、閒聊、反問、確認、未命中，或 both 但數字部分沒有執行查詢：都不顯示表格
     } else if (d.row_count === 0) {
       card.append(el("p", { class: "empty", text: "查詢成功，但沒有符合條件的資料。" }));
       if (!isWide() && d.sql) card.append(renderSql(sqlWithBinds(d), false));

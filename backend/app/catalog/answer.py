@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from numbers import Number
@@ -36,6 +37,7 @@ SYSTEM = """你是公司 ERP 助理。系統已用「既定查詢程式」查好
 3. 每個數字要取自正確的欄位（例如問建議採購量，就只能引用「建議採購量=」後面的值）。
 4. 結果超過 3 列時，只點名最重要的前 3 項，其餘說「詳見表格」。
 5. 不推測原因，不提 SQL、資料表或程式名稱。
+6. 不要輸出表格或逐列列出資料，畫面上已有完整表格。
 """
 
 
@@ -94,6 +96,12 @@ def build_messages(question: str, template: QueryTemplate, params_readable: list
     return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
 
 
+def strip_tables(text: str) -> str:
+    """移除 LLM 自行輸出的 Markdown 表格列（畫面已有表格；長表格還會被 max_tokens 截斷）。"""
+    lines = [ln for ln in text.splitlines() if not ln.lstrip().startswith("|")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
 def _default_chat(messages: list[dict]):
     from .. import llm
 
@@ -107,7 +115,7 @@ def summarize(question: str, template: QueryTemplate, params_readable: list[str]
         return AnswerText(fixed, "fixed")
     try:
         r = (chat or _default_chat)(build_messages(question, template, params_readable, columns, rows, facts))
-        text = (r.text or "").strip()
+        text = strip_tables(r.text or "")
     except Exception as e:  # noqa: BLE001 — LLM 失敗就用固定句型
         log.warning("結果回覆 LLM 失敗，改用固定句型：%s", e)
         return AnswerText(fixed, "fixed")

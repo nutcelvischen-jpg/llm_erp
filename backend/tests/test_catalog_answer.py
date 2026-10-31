@@ -83,6 +83,12 @@ def test_llm_failure_and_empty_falls_back():
     assert summarize("q", T, COND, COLS, ROWS, FACTS, chat=chat("  ")).source == "fixed"
 
 
+def test_markdown_table_in_llm_answer_removed():
+    text = "今年營收第一名是華發實業。\n\n詳見下表：\n\n| 客戶名稱 | 營收 |\n| :--- | :--- |\n| 華發實業 | 11,979,390 |\n| 鴻遠"
+    a = summarize("q", T, COND, COLS, ROWS, FACTS, chat=chat(text))
+    assert a.source == "llm" and "|" not in a.text and a.text == "今年營收第一名是華發實業。\n\n詳見下表："
+
+
 def test_no_rows_does_not_call_llm():
     a = summarize("q", T, COND, COLS, [], T.facts(COLS, []), chat=lambda m: pytest.fail("不該呼叫"))
     assert a.source == "fixed" and a.text == "查無符合條件的資料。"
