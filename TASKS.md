@@ -916,7 +916,7 @@ class Hit: chunk_id: str; score: float; text: str; file_name: str; page: int; he
 def retrieve(query: str, top_k=20, top_n=5, doc_type: str | None = None) -> list[Hit]
 ```
 **流程**：Qdrant `query_points` 用 `prefetch` 同時查 dense 與 bm25 各 top_k → `FusionQuery(RRF)` → 取 top_k → `reranker.rerank` → top_n。`doc_type` 有值時加 payload filter。
-**測試** `@pytest.mark.llm`：query「延遲交貨罰款怎麼算」top_n 第一筆 `file_name` 是銷售合約且 text 含「0.3%」；query「特休幾天」第一筆 doc_type = 人資。
+**測試** `@pytest.mark.llm`：query「鴻遠機械的合約，延遲交貨罰款怎麼算？」top_n 第一筆 `file_name` 是銷售合約且 text 含「0.3%」；query「特休幾天」第一筆 doc_type = 人資。（2026-10-31：原 query 未指名客戶，而 5 份銷售合約違約金比率各不同、只有鴻遠為 0.3%，經 Elvis 同意改為指名鴻遠機械。）
 
 **驗收**：`make test-llm` 通過。
 

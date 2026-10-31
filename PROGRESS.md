@@ -60,3 +60,11 @@
 ## T18 修正 ✅
 - 重跑時固定有 3 份被重寫：原因是浮點 mtime 經 Qdrant 存取精度對不上。改存整數奈秒 `mtime_ns`。驗收：`make test` 249 passed；`make ingest` 第一次寫入 355 塊，第二次「寫入 0 塊，跳過 20 份」。
 - 之後的任務改交由 Claude Code 依 TASKS.md 自動進行（從 T19 開始）。
+
+## T19 混合檢索 ✅
+- `backend/app/rag/retrieve.py`：`candidates()`（dense + bm25 各 top_k → Qdrant `FusionQuery(RRF)`）、`retrieve()`（再經 reranker 取 top_n）；`doc_type` payload filter；Qdrant／embedding 失敗丟 `RetrieveError`（含明確訊息），reranker 失敗時記 warning 並退回 RRF 順序。client／embed／rerank 可注入。
+- `backend/tests/test_rag_retrieve.py`：8 個單元測試（Qdrant `:memory:` + 假 embedding／reranker）+ 2 個 `@llm`。
+- 驗收：`make test` 257 passed；`make test-llm` 17 passed。
+- 與 TASKS.md 的差異（Elvis 同意）：原測試 query「延遲交貨罰款怎麼算」未指名客戶，而 5 份銷售合約違約金比率各不同（鴻遠 0.3%、台陽 0.5%、力發 0.2%、新祥 0.4%、明誠每週 1.5%），rerank 後 5 份第五條分數 0.918–0.956 幾乎並列、第一名是明誠，無正當方法固定排出鴻遠。改為「鴻遠機械的合約，延遲交貨罰款怎麼算？」→ 第一筆即鴻遠第五條（0.995）。TASKS.md 已同步註記。
+- 實測：未指名時前 5 名正是 5 份銷售合約的違約金條款，採購合約扣款條款排 6–8，檢索本身正確。
+- 注意：reranker 冷啟動第一次 20 筆約 6.6–9.6 秒，之後 1.1–1.7 秒（片段較長，max_length 512）；Demo 前需暖機。
