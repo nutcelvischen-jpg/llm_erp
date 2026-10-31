@@ -254,3 +254,9 @@
 - 調整：第一次跑 I14「應收金額最大的前 5 名客戶」被判成銷售排名 → 在兩個模板描述標明【銷售】／【應收帳款】並補一句措辭不同的 example（沒改題目）。
 - 測試 `backend/tests/test_intent.py`：候選排序與門檻、同義詞與夾值、不支援的參數值與期間 → confirm、省略參數用預設、不在候選的模板、實體四種狀態、缺必填、unsure 列候選（去重、排除不在候選或需反問者）、unsupported、LLM 例外、confirm 重新驗證、prompt 內容；真實 LLM 6 題。
 - 驗收：`make eval-intent` 連跑兩次 **模板 32/32 = 100%、參數 32/32 = 100%、不支援誤判 0/8**，平均 0.8–1.6 秒。`make test` 469 passed；`make test-llm` 31 passed。
+
+## T14e 結果回覆（LLM 看結果、不可編造數字）✅
+- `backend/app/catalog/answer.py`：`summarize(question, template, params_readable, columns, rows, facts) -> AnswerText(text, source, unsupported)`。prompt 含問題、模板說明、查詢條件、**程式算出的 facts（數值＋預先格式化字串）**、結果表（最多 20 列，每列「欄位=值」）；規則：2–3 句先給結論、只能用 facts 與表格的數字、不計算不換算、取正確欄位、超過 3 列只點名前 3 項、不推測不提 SQL。
+- `numbers_supported(text, rows, facts, context, max_rank)`：比 T23 的 numcheck 嚴格，**不再無條件放行 ≤31 的整數**；年份／月／日必須來自查詢條件（期間說明）或結果中的日期；名次序數不得超過結果列數或筆數；容許千分位、依小數位四捨五入、萬／億換算、負數以絕對值比對。檢查不過、LLM 失敗或空回覆 → 模板的 `summary()`（`source="fixed"`）；沒有結果列時不呼叫 LLM。
+- 測試 `backend/tests/test_catalog_answer.py`：擷取邊界（`1,234.5`、`12.3%`、`1,198 萬`、中文數字不算）、支援／不支援、年份與名次只能來自條件、負數、日期、prompt 內容、LLM 回覆採用／退回、16 個模板的固定句型；真實 LLM 3 個模板（營收排名、呆滯明細、缺料）的回覆都通過數字檢查（source=llm）。
+- 驗收：`make test` 481 passed；`make test-llm` 全過。
