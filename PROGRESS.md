@@ -106,3 +106,9 @@
 - 數字檢查 `backend/app/numcheck.py`：回覆中的數字須能在查詢結果、文件回答或問題中找到（容許千分位、依小數位四捨五入、萬／億換算；年份與 ≤31 小整數例外）。用在 sql 的查詢說明（不過→「查詢結果如下表（共 N 列）」）、both 的綜合結論（不過→固定組合：查詢說明＋文件回答）、chat（出現任何數字→固定自我介紹）。
 - both：text2sql 婉拒（「無法用 ERP 資料回答」，例如路由規則把「特休幾天」升為 both）視為不適用、不顯示失敗；只有真正故障才顯示「這部分查詢失敗：…」。MERGE_SYSTEM 規定數字以查詢結果為準（修正「文件查無逾期金額」的矛盾句）。
 - 驗收：`make test` 303 passed；`make test-llm` 22 passed（三題 Demo：營收前三→sql 表格、鴻遠罰款→docs 0.3%／10% 附來源、台陽逾期＋暫停出貨→both「5 張逾期 244,593 元…逾期超過 60 日得暫停出貨 [來源 1]」；audit_log +3 列）。延遲：sql 2.3 秒、both 5.6 秒、docs 首次 11.7 秒（reranker 冷啟動）。
+
+## T24 稽核 ✅
+- `backend/app/audit.py`：`write(AuditRecord) -> id | None`（T23 已建）、`list_recent(n)`（新到舊，n 夾 1–500，`ts` 轉 ISO 字串，`doc_sources` 為 JSON）、`add_feedback(audit_id, score, comment)`（score 只收 1／-1，否則 ValueError；comment 去空白、截 1000 字）。所有資料庫失敗只記 log、回 None／空清單，不拋錯。
+- 測試 `backend/tests/test_audit.py`：單元（連不上資料庫不拋錯、分數驗證）+ `db`（寫入後讀回、回饋寫入讀回、不存在的 audit_id、排序與夾值）。
+- 驗收：`make test` 305 passed；`make test-db` 62 passed。
+- 備註：db 測試會在 `app.audit_log` 留下 session_id 為 `pytest-…` 的列（T23 的真實測試是 `pytest`），T26 統計時可用 session_id 排除。
