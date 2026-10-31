@@ -79,13 +79,14 @@ def _doc_filter(doc_id: str) -> models.Filter:
     return models.Filter(must=[models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id))])
 
 
-def indexed_mtime(client: QdrantClient, name: str, doc_id: str) -> float | None:
-    pts, _ = client.scroll(name, scroll_filter=_doc_filter(doc_id), limit=1, with_payload=["mtime"])
-    return pts[0].payload.get("mtime") if pts else None
+def indexed_mtime(client: QdrantClient, name: str, doc_id: str) -> int | None:
+    """回傳已索引文件的 mtime（整數奈秒；浮點數經 Qdrant JSON 存取精度會對不上）。"""
+    pts, _ = client.scroll(name, scroll_filter=_doc_filter(doc_id), limit=1, with_payload=["mtime_ns"])
+    return pts[0].payload.get("mtime_ns") if pts else None
 
 
 def ingest_chunks(client: QdrantClient, chunks: list[Chunk], embed: Callable[[list[str]], list[list[float]]],
-                  mtime: float = 0.0, name: str | None = None) -> int:
+                  mtime_ns: int = 0, name: str | None = None) -> int:
     """寫入同一份文件的 chunks（先刪舊的再寫，避免舊版殘留）。回傳寫入筆數。"""
     name = name or settings.qdrant_collection
     if not chunks:
@@ -101,7 +102,7 @@ def ingest_chunks(client: QdrantClient, chunks: list[Chunk], embed: Callable[[li
             models.PointStruct(
                 id=point_id(c.chunk_id),
                 vector={"dense": d, "bm25": sparse_vector(c.text)},
-                payload={**asdict(c), "mtime": mtime},
+                payload={**asdict(c), "mtime_ns": int(mtime_ns)},
             )
             for c, d in zip(part, dense)
         ]
@@ -117,7 +118,7 @@ def ingest_pdf(client: QdrantClient, path: Path, embed: Callable[[list[str]], li
 
     path = Path(path)
     name = name or settings.qdrant_collection
-    mt = path.stat().st_mtime
+    mt = path.stat().st_mtime_ns
     if not force and indexed_mtime(client, name, doc_id_of(path.name)) == mt:
         return None
     return ingest_chunks(client, chunk_blocks(parse_pdf(path)), embed, mt, name)

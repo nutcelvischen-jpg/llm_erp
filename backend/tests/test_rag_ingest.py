@@ -47,9 +47,9 @@ def test_point_id_deterministic():
 
 def test_ingest_and_sparse_search(client):
     cs = [C(0, "延遲交貨每日按0.3%計付違約金，上限10%"), C(1, "付款條件為月結30天"), C(2, "保固期間為12個月")]
-    assert ingest_chunks(client, cs, fake_embed, mtime=123.0, name="t") == 3
+    assert ingest_chunks(client, cs, fake_embed, mtime_ns=123, name="t") == 3
     assert client.count("t", exact=True).count == 3
-    assert indexed_mtime(client, "t", "d1") == 123.0
+    assert indexed_mtime(client, "t", "d1") == 123
     r = client.query_points("t", query=sparse_vector("違約金上限", query=True), using="bm25", limit=1, with_payload=True)
     assert r.points[0].payload["chunk_id"] == "d1-000" and r.points[0].payload["heading_path"] == ["第三條"]
     r = client.query_points("t", query=fake_embed([cs[1].text])[0], using="dense", limit=1, with_payload=True)
@@ -57,10 +57,10 @@ def test_ingest_and_sparse_search(client):
 
 
 def test_reingest_replaces_old_points(client):
-    ingest_chunks(client, [C(0, "舊一"), C(1, "舊二"), C(2, "舊三")], fake_embed, 1.0, "t")
-    ingest_chunks(client, [C(0, "新一")], fake_embed, 2.0, "t")
-    assert client.count("t", exact=True).count == 1 and indexed_mtime(client, "t", "d1") == 2.0
-    ingest_chunks(client, [C(0, "其他文件", doc="d2")], fake_embed, 3.0, "t")
+    ingest_chunks(client, [C(0, "舊一"), C(1, "舊二"), C(2, "舊三")], fake_embed, 1, "t")
+    ingest_chunks(client, [C(0, "新一")], fake_embed, 2, "t")
+    assert client.count("t", exact=True).count == 1 and indexed_mtime(client, "t", "d1") == 2
+    ingest_chunks(client, [C(0, "其他文件", doc="d2")], fake_embed, 3, "t")
     assert client.count("t", exact=True).count == 2
 
 
@@ -70,5 +70,5 @@ def test_indexed_mtime_missing(client):
 
 def test_batches_over_64(client):
     cs = [C(i, f"第{i}段內容") for i in range(150)]
-    assert ingest_chunks(client, cs, fake_embed, 1.0, "t") == 150
+    assert ingest_chunks(client, cs, fake_embed, 1, "t") == 150
     assert client.count("t", exact=True).count == 150

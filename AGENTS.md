@@ -92,3 +92,12 @@ local_llm/
 | 時區 | Asia/Taipei |
 | 模型常駐 | 聊天與 embedding 兩個模型必須同時載入（`make llm-up`）；否則 LM Studio 會讓它們互相卸載，每題多 12 秒。跑評估或量延遲前先確認 `lms ps` 有兩個模型 |
 | 關閉 Qwen 思考 | 每次 chat 呼叫都帶 `extra_body={"reasoning_effort": "none"}`；`/no_think`、`enable_thinking` 無效；思考內容在 `reasoning_content` 欄位，答案在 `content` |
+
+## 實作現況與規格差異（T15–T18，以此為準）
+- **T15 文件**：20 份示範 PDF 由 `make docs`（`scripts/make_docs.py` + `scripts/docgen/`，Playwright/Chromium）產生，已 commit 於 `data/docs/`；`data/docs/facts.yaml` 是 123 筆「檔名／頁碼／問題／答案」，T20、T21 的 RAG 測試題請由它產生。
+- **PDF 抽字**：會把部分中文換成部首字元（如「⼩」），en dash 變 figure dash。`rag/parse.py` 的 `clean_text()` 已處理；任何拿 PDF 抽字結果做比對的程式都要先正規化。
+- **T16/T17**：Docling 關閉 OCR；`blocks_from_docling()` 與 `chunk_blocks()` 是純函式，用假資料單測。實測 20 份 → 355 塊。
+- **T18 sparse 向量**：不用 fastembed 的 `Qdrant/bm25`（需下載且不斷詞）。改為 jieba `cut_for_search` → crc32 token id → BM25 TF 權重，IDF 由 Qdrant `Modifier.IDF` 計算；查詢向量每個 token 權重 1。T19 查詢請用 `ingest.sparse_vector(text, query=True)`，vector 名稱 `dense` / `bm25`。
+- **跳過已索引文件**：以 payload `mtime_ns`（整數）判斷；浮點 mtime 經 Qdrant 存取會對不上，勿改回浮點。
+- **容器限制**：代理若在無法連 HuggingFace 的環境執行，Docling／reranker 模型下載會失敗，這類測試標 `db` 或 `llm`，只在有網路的 Mac 上跑。
+- **環境前置**：LM Studio 兩個模型須常駐（`make llm-up`）、Docker 服務須啟動（`make up`）。

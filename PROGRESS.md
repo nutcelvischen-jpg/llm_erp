@@ -50,3 +50,13 @@
 - `backend/app/rag/chunk.py`：`chunk_blocks()`（文字約 600 字、重疊 80；表格整張一塊，>1500 字按列切並重複表頭；前綴 `【檔名 › 標題路徑】`；`doc_type` 由檔名前綴判斷）。`make test` 242 passed。
 - 實測 20 份 PDF → **355 塊**（表格 110 塊）；字數 min/median/max = 48/147/803；解析加切塊共 34 秒。T18 驗收門檻（>200）足夠。
 - 與 TASKS.md 的差異：不跨 Block 合併（Block 已按標題與頁分隔，頁碼引用才準）；只略超過目標長度（≤680 字）的文字不切。
+
+## T18 建立索引 ✅
+- `backend/app/rag/ingest.py` + `scripts/ingest_docs.py`：collection `erp_docs`（dense bge-m3 1024 維 + sparse bm25）；已索引且 mtime 未變則跳過；`--force` / `--recreate`；`jieba>=0.42` 已加入 pyproject。
+- 驗收：`make ingest` 後 collection 共 **355 筆**（>200）；重跑時 17 份顯示「跳過（未變更）」。
+- 與 TASKS.md 的差異：sparse 不用 fastembed `Qdrant/bm25`（需從 HuggingFace 下載且不斷詞），改為 jieba 斷詞 → crc32 token id → BM25 TF 權重，IDF 由 Qdrant（Modifier.IDF）計算。
+- 待確認：某次重跑有 3 份（SOP_費用報支、SOP_進料驗收、規格書_BRG-6205-2RS）未被跳過而重寫，最終筆數仍為 355；原因未明（可能是前次執行中斷）。再跑一次 `make ingest` 若全數跳過即無問題。
+
+## T18 修正 ✅
+- 重跑時固定有 3 份被重寫：原因是浮點 mtime 經 Qdrant 存取精度對不上。改存整數奈秒 `mtime_ns`。驗收：`make test` 249 passed；`make ingest` 第一次寫入 355 塊，第二次「寫入 0 塊，跳過 20 份」。
+- 之後的任務改交由 Claude Code 依 TASKS.md 自動進行（從 T19 開始）。
