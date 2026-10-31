@@ -150,3 +150,11 @@
 - `POST /admin/jobs/dead_stock/run`：同步執行並回 `{ok, notification_id, message, next_run_time}`；執行中再觸發 409，失敗 503。
 - 驗收（另開 `uvicorn --port 8011`，不動你的 `make dev`）：啟動 log `排程器啟動：dead_stock_weekly 下次執行 2026-11-02T08:00:00+08:00`；手動觸發前 `app.notifications` 0 列 → 後 1 列（id 1，channel console，sent false）；關閉時 log `排程器已關閉`。`make test` 344 passed。
 - 注意：`make dev` 用 `--reload` 也會啟動排程器；若同時開多個後端程序，每個都會在週一 08:00 各跑一次（PoC 只開一個即可）。
+
+## T29 LINE 推播 ✅（無 token 模式；Elvis 決定先不接 LINE）
+- `backend/app/jobs/line_push.py`：`push()`（`POST https://api.line.me/v2/bot/message/push`，`to = LINE_TARGET_ID`，逾時 10 秒，超過 5000 字截斷；失敗只記 log 回 False）、`send_notification()`（成功才把 `notifications.sent = true`）、`push_pending()`（補送 channel='line' 且未送出的通知）。指令：`uv run python -m backend.app.jobs.line_push [--test]`。
+- 接進排程：`scheduler.run_dead_stock()` 寫入通知後呼叫 `send_notification`；`POST /admin/jobs/dead_stock/run` 回應多了 `line_sent`。
+- `docs/LINE_SETUP.md`：建立 Messaging API channel、取得 long-lived token 與 user ID、填 `.env`、測試指令、常見錯誤；並註明推播內容會經過 LINE 伺服器（資料離開內網）。
+- 測試 `backend/tests/test_line_push.py`：未設定時跳過、請求格式（URL／Bearer／body）、截斷、HTTP 錯誤與斷線、只有成功才標記 sent。`make test` 351 passed。
+- 驗收第一部分 ✅：無 token 時 `line_push`、`line_push --test`、排程工作都記 log `LINE 未設定，跳過`；通知照常寫入（id 2，channel console，sent false）。
+- 驗收第二部分（有 token 時手機收到訊息）：Elvis 決定先不接 LINE，以第一部分視為通過。日後要接時依 `docs/LINE_SETUP.md` 填 `.env`，再跑 `uv run python -m backend.app.jobs.line_push --test` 驗證。

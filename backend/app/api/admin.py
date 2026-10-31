@@ -108,7 +108,7 @@ def run_dead_stock_now() -> dict:
     except Exception as e:
         log.exception("手動執行呆滯庫存預警失敗")
         raise HTTPException(503, f"呆滯庫存預警執行失敗：{str(e)[:200]}") from e
-    return {"ok": True, "notification_id": r["id"], "message": r["message"],
+    return {"ok": True, "notification_id": r["id"], "message": r["message"], "line_sent": r.get("line_sent", False),
             "next_run_time": scheduler.next_run_time()}
 
 

@@ -40,7 +40,8 @@ def test_lifespan_starts_and_stops(sched):
 def test_run_dead_stock_saves_and_returns_id(monkeypatch):
     monkeypatch.setattr(dead_stock, "save_notification", lambda m, c: 123)
     monkeypatch.setattr(dead_stock, "run", lambda dry_run, save: save("msg", "console") and "msg")
-    assert scheduler.run_dead_stock() == {"id": 123, "message": "msg"}
+    monkeypatch.setattr(scheduler.settings, "line_channel_access_token", "")
+    assert scheduler.run_dead_stock() == {"id": 123, "message": "msg", "line_sent": False}
 
 
 def test_scheduled_job_swallows_errors(monkeypatch, caplog):

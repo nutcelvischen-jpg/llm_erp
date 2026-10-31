@@ -22,7 +22,7 @@ class JobBusy(RuntimeError):
 
 def run_dead_stock() -> dict:
     """執行一次預警並寫入 app.notifications，回傳 {id, message}。同時只允許一個在跑。"""
-    from . import dead_stock
+    from . import dead_stock, line_push
 
     if not _run_lock.acquire(blocking=False):
         raise JobBusy("呆滯庫存預警正在執行中")
@@ -34,7 +34,9 @@ def run_dead_stock() -> dict:
             return ids[-1]
 
         message = dead_stock.run(dry_run=False, save=save)
-        return {"id": ids[0] if ids else None, "message": message}
+        nid = ids[0] if ids else None
+        pushed = line_push.send_notification(nid, message) if nid is not None else False
+        return {"id": nid, "message": message, "line_sent": pushed}
     finally:
         _run_lock.release()
 
