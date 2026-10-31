@@ -97,3 +97,12 @@
 - 關鍵字保底照規格：文件詞（合約／SOP／規定／辦法／條款／規格）→ docs；數字詞（多少／幾／排名／金額／庫存／逾期／營收）→ sql；與 LLM 結果取聯集（sql+docs=both；有其他類時 chat 讓位）。規則同時套用原句與改寫後的句子。LLM 失敗或回傳不合法 kind 時只用規則。
 - 驗收：`make test` 287 passed（規則 5 案例 + 合併、失敗退回等）；`make test-llm` 21 passed（sql、docs、「那去年呢」改寫成「鴻遠機械去年營收」）。
 - 觀察：規格的數字詞很寬，「特休幾天」「事假一年可以請幾天」「GEAR-M2-40T 的最低訂購量是多少」LLM 判 docs，但被規則升為 both（會多跑一次 SQL，約 +2 秒）。照規格保留；T23 的 both 合併時 SQL 查無資料就只用文件回答。若要收斂，可把「幾／多少」改為只在沒有文件詞時才觸發（需 Elvis 決定）。
+
+## T23 Agent 主流程 ✅
+- `backend/app/agent/graph.py`：`run_agent(question, history, session_id) -> AgentResult(markdown, route, answer, rewritten, sql, columns, rows, row_count, sources, latency_ms, tokens, warning, error, audit_id)`。route → sql／docs／both（`ThreadPoolExecutor` 並行）／chat → Markdown（結論／數據表 ≤20 列／`<details>` SQL／來源）→ `audit.write`。外部呼叫集中在 `Deps`，單元測試全用假的。
+- **與 TASKS.md 的差異（重要）**：
+  1. sql 分支規格是 `catalog.answer_question`，但 T14b–T14f 依 Elvis 決定暫不做，改接 `text2sql.run`（必經 sql_guard、唯讀角色）；回答與 `warning` 一律標示「AI 即時產生的查詢，請查核 SQL 與結果」。這與 AGENTS.md「模板優先、AI SQL 須管理員開 ALLOW_AI_FALLBACK」不一致（目前 `/api/chat` 原本就是 text2sql）；做完 catalog 後只需替換 `graph._default_sql`。
+  2. `audit.write` 屬 T24，但 T23 測試要檢查 audit_log，先在 `backend/app/audit.py` 實作 `write()`（失敗只記 log、回 None）；`list_recent`／`add_feedback` 留給 T24。
+- 數字檢查 `backend/app/numcheck.py`：回覆中的數字須能在查詢結果、文件回答或問題中找到（容許千分位、依小數位四捨五入、萬／億換算；年份與 ≤31 小整數例外）。用在 sql 的查詢說明（不過→「查詢結果如下表（共 N 列）」）、both 的綜合結論（不過→固定組合：查詢說明＋文件回答）、chat（出現任何數字→固定自我介紹）。
+- both：text2sql 婉拒（「無法用 ERP 資料回答」，例如路由規則把「特休幾天」升為 both）視為不適用、不顯示失敗；只有真正故障才顯示「這部分查詢失敗：…」。MERGE_SYSTEM 規定數字以查詢結果為準（修正「文件查無逾期金額」的矛盾句）。
+- 驗收：`make test` 303 passed；`make test-llm` 22 passed（三題 Demo：營收前三→sql 表格、鴻遠罰款→docs 0.3%／10% 附來源、台陽逾期＋暫停出貨→both「5 張逾期 244,593 元…逾期超過 60 日得暫停出貨 [來源 1]」；audit_log +3 列）。延遲：sql 2.3 秒、both 5.6 秒、docs 首次 11.7 秒（reranker 冷啟動）。
