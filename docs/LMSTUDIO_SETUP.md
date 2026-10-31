@@ -39,4 +39,21 @@ uv run python scripts/smoke_lmstudio.py
 | `Connection refused` | Local Model API 開關沒開，或 port 不是 1234 |
 | `[FAIL] LLM_MODEL=... 不在清單中` | 以 `curl localhost:1234/v1/models` 的 id 為準 |
 | 速度 < 15 tok/s | 確認是 MLX 版本；確認已執行 sysctl；關掉其他吃記憶體的 App |
-| 第一題特別慢 | JIT 載入模型，正常；Demo 前先暖機 |
+| 第一題特別慢 | JIT 載入模型，正常；Demo 前先 `make llm-up` 並問一題暖機 |
+| 每題都慢（約 13 秒） | 兩個模型在互相卸載；執行 `make llm-up`，見上節 |
+
+## 兩個模型必須同時常駐（重要）
+
+**症狀**：每個問題都要 13 秒左右，連「員工薪資」這種馬上會被婉拒的問題也一樣慢。
+**原因**：LM Studio 的 JIT 自動載入預設「只保留最後一個載入的模型」。我們每題都會呼叫兩個模型（embedding 挑範例、聊天模型產生 SQL），它們會互相卸載，於是每題都要重新載入聊天模型並重算整份 prompt。
+**實測**：兩個模型常駐之後，30 題黃金題平均從 **13.5 秒降到 1.7 秒**（P95 2.3 秒），正確率不變（30/30）。
+
+**解法**：用 `make llm-up` 手動載入兩個模型（手動載入的模型不會被自動卸載）：
+```bash
+make llm-up          # 先卸載全部，再載入 .env 的 LLM_MODEL 與 EMBED_MODEL，並列出狀態
+~/.lmstudio/bin/lms ps   # 確認剛好兩個模型、沒有重複（identifier 不該出現 :2）
+```
+- 聊天模型以 context 32768、parallel 1 載入：我們的 prompt 約 3K token，32K 綽綽有餘；LM Studio 預設的 256K context 與 4 個平行槽位只會浪費記憶體，快取也分散在不同槽位。
+- **重開機或重啟 LM Studio 後要重跑 `make llm-up`**。Demo 或評估（`make eval-sql`）之前先跑一次。
+- 後端 `/health` 會在模型沒常駐時回傳 `warnings`（不影響 `ok`），提醒你執行 `make llm-up`。
+- 如果之後有多人同時使用，再把 `--parallel` 調高；調高前請重跑 `make eval-sql` 確認延遲。

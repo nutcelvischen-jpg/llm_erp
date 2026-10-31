@@ -1,4 +1,4 @@
-.PHONY: setup up down logs dev test test-llm test-db seed ingest eval-sql eval-rag lint load-examples
+.PHONY: setup up down logs dev test test-llm test-db seed ingest eval-sql eval-rag lint load-examples llm-up
 
 setup:
 	uv venv --python 3.12 --allow-existing
@@ -43,3 +43,10 @@ lint:
 
 load-examples:
 	uv run python scripts/load_sql_examples.py
+
+llm-up:
+	@set -a; . ./.env; set +a; \
+	$$HOME/.lmstudio/bin/lms unload --all || true; \
+	$$HOME/.lmstudio/bin/lms load "$$LLM_MODEL" -c 32768 --parallel 1 -y; \
+	$$HOME/.lmstudio/bin/lms load "$$EMBED_MODEL" -y; \
+	$$HOME/.lmstudio/bin/lms ps

@@ -47,6 +47,16 @@ e = timed("不同範例（模擬問題 2 的 system）", s2, Q2, 1)
 prefill_rate = a.prompt_tokens / (a.latency_ms / 1000)
 print(f"  → 約 {prefill_rate:.0f} tok/s")
 
+print("\n④ 驗證：穿插一次 embedding 之後，聊天模型的快取還在嗎？")
+timed("（對照）先再送一次，確認快取在", s1, Q1, 1)
+llm.embed(["測試"])
+f = timed("先做 embedding，再送完全相同的請求", s1, Q1, 1)
+evicted = f.latency_ms > 2000 and f.latency_ms > b.latency_ms * 5
+if evicted:
+    print("  → 確認：embedding 呼叫會讓 LM Studio 的聊天模型被卸載或快取失效，每題都得重新載入並重算 prompt。")
+else:
+    print("  → embedding 不影響快取，延遲另有原因。")
+
 print("\n③ 推估")
 sql_tokens = 200
 print(f"  正式問題 ≈ 處理 prompt {a.latency_ms / 1000:.1f} 秒 + 產生 SQL（約 {sql_tokens} tok）{sql_tokens / decode_rate:.1f} 秒 "
@@ -58,3 +68,10 @@ elif e.latency_ms < a.latency_ms * 0.5:
     print("  → 只有「開頭相同的部分」被快取：可再把 prompt 拆成固定在前、變動在後。")
 else:
     print("  → 看不出快取效果：延遲主要靠縮短 prompt（精簡 schema 說明、減少範例）或避免重複送出長 prompt。")
+if evicted:
+    print("\n【解法】讓兩個模型同時常駐，不要被 JIT 自動卸載：")
+    print("  1) LM Studio 設定裡找「Only Keep Last JIT Loaded Model」／自動卸載，關閉；或")
+    print("  2) 用指令手動載入（手動載入的模型不會被自動卸載）：")
+    print("       ~/.lmstudio/bin/lms load qwen/qwen3.6-35b-a3b")
+    print("       ~/.lmstudio/bin/lms load text-embedding-bge-m3")
+    print("     用 ~/.lmstudio/bin/lms ps 確認兩個都在；改完後重跑本腳本，第 ④ 步應該變回不到 1 秒。")
