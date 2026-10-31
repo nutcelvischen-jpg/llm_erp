@@ -681,6 +681,7 @@ class SqlAnswer:
    - 回答卡片：一句說明（`explanation`）、表格（最多顯示 20 列；數字加千分位；`null` 顯示 `-`；超過 20 列時加註「僅顯示前 20 列，共 N 列」）、可展開的「查詢的 SQL」區塊與「複製 SQL」按鈕、小字「耗時 X.X 秒・嘗試 N 次」。
    - 安全：所有後端傳來的文字一律用 `textContent` 或 DOM API 建立節點，**禁止用 `innerHTML` 插入**使用者或模型產生的內容。
    - 狀態只放在記憶體變數，不使用 localStorage。
+     > **2026-10-31 變更（Elvis 決定）**：新增「對話紀錄」功能，對話（問題、回答、結果列）存在瀏覽器 localStorage（key `erp-assistant.conversations.v1`，最多 30 段，空間不足自動丟最舊），只留在這台電腦、不上傳；左側欄可刪除單段或「清除全部紀錄」。共用電腦若有疑慮，可把 `CONFIG.maxConversations` 設為 0 關閉。
 4. 移除 Open WebUI：`docker-compose.yml` 已刪除該服務；Mac 上執行 `docker compose up -d --remove-orphans` 停掉舊容器，`docker volume rm local_llm_webui_data` 清掉資料卷。`make dev` 維持綁 127.0.0.1；之後要給同網段的人看 Demo，才手動加 `--host 0.0.0.0`。
 
 **測試**

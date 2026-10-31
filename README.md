@@ -40,6 +40,7 @@ make dev                   # http://localhost:8000
 ### 3. Demo
 - 開 http://localhost:8000，點 6 個範例問題。講稿、預期畫面與備援見 **`docs/DEMO_SCRIPT.md`**。
 - 連續追問的情境劇（圖表＋合約／規章＋兩者合併判斷）見 **`docs/DEMO_STORIES.md`**。
+- 網頁操作：左側欄（新對話、本次問題、對話紀錄）、輸入框旁「💡 範例」、每題下方「接著問」與複製／下載 CSV／重新查詢。
 - Demo 前先把 6 題預跑一次暖機（第一次查文件要載入 reranker，約 10 秒；之後 3–9 秒）。
 - 每週預警手動觸發：`curl -s -X POST localhost:8000/admin/jobs/dead_stock/run`
 
@@ -51,7 +52,7 @@ make test-db && make test-llm        # 需要 Docker 與 LM Studio
 make eval-sql                        # 數字查詢 30 題黃金題（既定程式；--engine ai 可比較 AI 寫 SQL）
 make eval-intent                     # 意圖辨識 40 題（模板 ≥95%、參數 ≥90%、不支援誤判 0）
 make eval-rag                        # RAG 30 題（命中 ≥85%、答案 ≥80%、拒答全對）
-uv run --with playwright python scripts/check_frontend.py   # 網頁 102 項瀏覽器檢查
+uv run --with playwright python scripts/check_frontend.py   # 網頁 129 項瀏覽器檢查
 ```
 
 ---

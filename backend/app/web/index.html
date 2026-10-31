@@ -27,9 +27,44 @@
   button { font: inherit; }
   :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-  header { background: var(--brand); color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header { background: var(--brand); color: #fff; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+  header .titles { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; flex: 1; min-width: 0; }
   header h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .02em; }
   header p { margin: 0; font-size: 13px; opacity: .85; }
+  .hbtn { border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12); color: #fff; border-radius: 9px; padding: 5px 12px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .hbtn:hover { background: rgba(255,255,255,.22); }
+  #menuBtn, #newBtnTop { display: none; }
+  .drawer-mode #menuBtn, .drawer-mode #newBtnTop { display: inline-block; }
+
+  /* ---- 左側欄：新對話、本次對話的問題、對話紀錄 ---- */
+  .sidebar { flex: 0 0 236px; display: flex; flex-direction: column; gap: 6px; padding: 14px 12px; overflow-y: auto;
+    background: #eef2f7; border-right: 1px solid var(--line); }
+  .drawer-mode .sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: 280px; transform: translateX(-100%);
+    transition: transform .2s; box-shadow: 4px 0 24px rgba(20,30,50,.18); }
+  .drawer-mode.drawer-open .sidebar { transform: none; }
+  .scrim { display: none; }
+  .drawer-mode.drawer-open .scrim { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(15,27,45,.35); }
+  .new-btn { border: 1px solid var(--brand); background: var(--card); color: var(--brand); border-radius: 10px; padding: 8px 12px; font-weight: 600; cursor: pointer; text-align: left; }
+  .new-btn:hover { background: var(--brand-soft); }
+  .side-h { margin: 12px 4px 2px; font-size: 12px; font-weight: 650; color: var(--muted); letter-spacing: .04em; }
+  .side-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .side-item { display: flex; align-items: center; border-radius: 8px; }
+  .side-item:hover { background: #e2e8f0; }
+  .side-item.current { background: var(--brand-soft); }
+  .side-item > button.go { all: unset; box-sizing: border-box; flex: 1; min-width: 0; padding: 6px 8px; cursor: pointer; font-size: 13px; line-height: 1.4; }
+  .side-item > button.go:focus-visible { outline: 2px solid var(--brand); border-radius: 8px; }
+  .side-item .t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side-item .d { display: block; font-size: 11px; color: var(--muted); }
+  .side-item.current .t { color: var(--brand); font-weight: 600; }
+  .side-item .del { border: none; background: none; color: var(--muted); cursor: pointer; padding: 4px 8px; font-size: 14px; visibility: hidden; border-radius: 6px; }
+  .side-item:hover .del, .side-item .del:focus-visible { visibility: visible; }
+  .side-item .del:hover { color: var(--danger); background: var(--danger-soft); }
+  .toc .side-item { counter-increment: q; }
+  .toc .go .t::before { content: counter(q) ". "; color: var(--muted); }
+  .toc { counter-reset: q; }
+  .side-empty { margin: 2px 6px; font-size: 12px; color: var(--muted); }
+  .side-note { margin-top: auto; padding: 10px 4px 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .linkbtn { border: none; background: none; color: var(--brand); cursor: pointer; padding: 0; font-size: 11px; text-decoration: underline; }
 
   .layout { flex: 1; display: flex; min-height: 0; }
   .chat-col { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
@@ -51,6 +86,7 @@
   .welcome { text-align: center; padding: 24px 0 4px; }
   .welcome h2 { margin: 0 0 6px; font-size: 22px; }
   .welcome p { margin: 0 0 18px; color: var(--muted); }
+  .welcome .more { margin-top: 14px; }
   .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; text-align: left; }
   .chip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--ink); cursor: pointer; text-align: left;
     transition: border-color .15s, box-shadow .15s, transform .15s; }
@@ -118,7 +154,18 @@
     border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }
   .copy:hover { background: rgba(255,255,255,.22); }
 
-  .foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .tool { border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 8px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+  .tool:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+  .tool:disabled { opacity: .5; cursor: not-allowed; }
+  .next { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .next-h { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .next-q { border: 1px solid color-mix(in srgb, var(--brand) 35%, #fff); background: var(--brand-soft); color: var(--brand); border-radius: 999px;
+    padding: 4px 12px; font-size: 13px; cursor: pointer; text-align: left; }
+  .next-q:hover:not(:disabled) { border-color: var(--brand); }
+  .next-q:disabled { opacity: .5; cursor: not-allowed; }
+  .section-h { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; }
+  .section-h h3 { margin: 0; }
   .meta { margin: 0; font-size: 12px; color: var(--muted); flex: 1; min-width: 160px; }
   .fb { border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 999px; padding: 2px 11px; font-size: 12px; cursor: pointer; }
   .fb:hover { border-color: var(--brand); color: var(--brand); }
@@ -133,7 +180,19 @@
   .skeleton { border-radius: 10px; margin-bottom: 14px; background: linear-gradient(90deg, #e9edf3 25%, #f6f8fb 37%, #e9edf3 63%); background-size: 400% 100%; animation: shimmer 1.3s ease infinite; }
   @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 
-  footer { background: var(--bg); padding: 8px 16px 14px; }
+  footer { background: var(--bg); padding: 8px 16px 14px; position: relative; }
+  #exBtn { border: 1px solid var(--line); background: var(--bg); color: var(--brand); border-radius: 10px; padding: 7px 12px; cursor: pointer; white-space: nowrap; font-weight: 600; }
+  #exBtn:hover, #exBtn[aria-expanded="true"] { border-color: var(--brand); background: var(--brand-soft); }
+  .examples { position: absolute; left: 16px; right: 16px; bottom: calc(100% - 4px); max-width: 920px; margin: 0 auto; max-height: min(62vh, 560px); overflow-y: auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 34px rgba(20,30,50,.18); padding: 14px 16px; z-index: 20; }
+  .examples[hidden] { display: none; }
+  .ex-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .ex-top b { color: var(--brand); }
+  .ex-group h4 { margin: 10px 0 6px; font-size: 13px; color: var(--muted); }
+  .ex-group .sub { font-weight: 400; margin-left: 6px; }
+  .ex-items { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ex-item { border: 1px solid var(--line); background: #fbfcfe; color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; text-align: left; }
+  .ex-item:hover { border-color: var(--brand); color: var(--brand); }
   .composer { max-width: 920px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end;
     background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 8px 8px 8px 16px; box-shadow: 0 2px 12px rgba(20,30,50,.06); }
   .composer:focus-within { border-color: var(--brand); }
@@ -147,15 +206,30 @@
 </head>
 <body>
 <header>
-  <h1 id="brandName">ERP 智慧助理</h1>
-  <p id="brandTag">用中文問 ERP 資料，全程在公司內網處理，資料不外流</p>
+  <button class="hbtn" id="menuBtn" type="button" aria-label="開啟對話紀錄" aria-controls="sidebar" aria-expanded="false">☰ 紀錄</button>
+  <div class="titles">
+    <h1 id="brandName">ERP 智慧助理</h1>
+    <p id="brandTag">用中文問 ERP 資料，全程在公司內網處理，資料不外流</p>
+  </div>
+  <button class="hbtn" id="newBtnTop" type="button">＋ 新對話</button>
 </header>
 
 <div class="layout" id="layout">
+  <nav class="sidebar" id="sidebar" aria-label="對話紀錄">
+    <button class="new-btn" id="newBtn" type="button">＋ 新對話</button>
+    <h3 class="side-h">本次對話的問題</h3>
+    <ol class="side-list toc" id="toc"></ol>
+    <h3 class="side-h">對話紀錄</h3>
+    <ul class="side-list" id="convos"></ul>
+    <p class="side-note">對話紀錄只存在這台電腦的瀏覽器，不會上傳。<br><button class="linkbtn" id="clearAll" type="button">清除全部紀錄</button></p>
+  </nav>
+  <div class="scrim" id="scrim"></div>
   <section class="chat-col">
     <main id="chat" role="log" aria-live="polite"><div class="wrap" id="thread"></div></main>
     <footer>
+      <div class="examples" id="examples" hidden role="dialog" aria-label="範例問題"></div>
       <form class="composer" id="form" autocomplete="off">
+        <button id="exBtn" type="button" aria-controls="examples" aria-expanded="false" title="範例問題">💡 範例</button>
         <textarea id="input" rows="1" placeholder="輸入問題，例如：今年營收最高的三個客戶" aria-label="輸入問題"></textarea>
         <button id="send" type="submit" aria-label="送出問題">送出</button>
       </form>
@@ -184,20 +258,33 @@ const CONFIG = {
     "依目前待出貨訂單，哪些料號會缺料？建議採購多少？",
     "員工加班費怎麼計算？依據哪份規章？",
   ],
+  // 「💡 範例」選單：依角色分組，點了直接送出
+  exampleGroups: [
+    { title: "業務與營收", items: ["今年營收前五名的客戶", "今年到目前為止毛利跟去年同期比怎樣？哪個客戶掉最多？", "最近 18 個月每個月的毛利率", "鴻遠機械最近 12 個月每個月的營收", "今年金額最大的五筆訂單"] },
+    { title: "財務與應收", items: ["哪些客戶的應收逾期超過 60 天？金額多少？", "應收帳款的帳齡分佈", "台陽科技有哪些發票逾期", "目前總共有多少應收帳款沒收回來？"] },
+    { title: "採購與庫存", items: ["依目前待出貨訂單，哪些料號會缺料？建議採購多少？", "哪些料號超過 180 天沒動？壓了多少錢？", "各供應商的準時交貨率", "GEAR-M2-40T 目前庫存多少", "庫存金額最高的 5 個料號"] },
+    { title: "合約、規章與規格書", items: ["鴻遠機械的合約，延遲交貨罰款怎麼算？", "精密熱處理依合約標準交期幾天？延遲交貨我們可以怎麼扣款？", "員工加班費怎麼計算？依據哪份規章？", "A 級客訴要多久內提出暫時對策？要用什麼報告回覆？", "GEAR-M2-40T 的材質與硬度是什麼？", "報支金額 5 萬元要誰核准？"] },
+    { title: "數字＋文件一起問", sub: "AI 會同時查 ERP 與合約，再合併判斷", items: ["鴻遠機械今年營收多少？依鴻遠機械的合約，今年拿得到折讓嗎？", "台陽科技逾期的應收有多少？依合約可以暫停出貨了嗎？"] },
+  ],
   previewRows: 5,        // 寬螢幕：對話卡片內的預覽列數
   inlineRows: 20,        // 窄螢幕：卡片內完整表格的列數上限
   panelRows: 200,        // 右側面板的列數上限
   wideBreakpoint: 1000,  // 螢幕寬度達此值才顯示右側面板
+  sidebarBreakpoint: 1240,  // 螢幕寬度達此值左側欄固定顯示，否則收進「☰ 紀錄」
+  maxConversations: 30,  // 瀏覽器（localStorage）最多保留幾段對話；設 0 不保存
   requestTimeoutMs: 180000,
 };
 
 const $ = (id) => document.getElementById(id);
 const thread = $("thread"), chatBox = $("chat"), input = $("input"), sendBtn = $("send"), form = $("form"), panel = $("panel"), layout = $("layout");
 const wideQuery = window.matchMedia(`(min-width: ${CONFIG.wideBreakpoint}px)`);
-const entries = [];        // 每則回答 {data, card, question}
+const sideQuery = window.matchMedia(`(min-width: ${CONFIG.sidebarBreakpoint}px)`);
+const entries = [];        // 每則回答 {data, card, question, display, choice}
 let activeIdx = -1, busy = false, liveCharts = [];
-const sessionId = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
-const history = [];        // 送給後端的前幾輪對話（只放記憶體），最多 6 輪
+const newId = () => (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random().toString(16).slice(2);
+let sessionId = newId();   // 一段對話一個 id（稽核用），也是對話紀錄的 key
+let startedAt = null;      // 這段對話第一題的時間
+const history = [];        // 送給後端的前幾輪對話，最多 6 輪
 const MAX_HISTORY = 12;
 
 document.title = CONFIG.brand.name;
@@ -350,20 +437,46 @@ function buildSources(sources, open) {
   d.addEventListener("click", (e) => e.stopPropagation());
   return d;
 }
+// ---------------------------------------------------------------- 匯出：CSV（Excel 可直接開）與複製
+function csvText(columns, rows) {
+  const cell = (v) => { const t = v === null || v === undefined ? "" : String(v); return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  return [columns, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
+}
+function downloadCsv(d, title) {
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const name = `${(title || "查詢結果").replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 40)}_${stamp}.csv`;
+  const url = URL.createObjectURL(new Blob(["\ufeff" + csvText(d.columns, d.rows)], { type: "text/csv;charset=utf-8" }));
+  const a = el("a", { href: url, download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function plainAnswer(e) {   // 複製用：問題、回答、表格（Tab 分隔，貼到 Excel 會自動分欄）、來源
+  const d = e.data, parts = [`問：${e.display || e.question}`, answerText(d) || d.error || ""];
+  if (hasTable(d)) parts.push([d.columns, ...d.rows].map((r) => r.map((v) => fmt(v, "")).join("\t")).join("\n"));
+  if (d.sources?.length) parts.push("來源：\n" + d.sources.map((x, i) => `${i + 1}. ${x.file_name} 第 ${x.page} 頁${x.heading ? " › " + x.heading : ""}`).join("\n"));
+  return parts.filter(Boolean).join("\n\n");
+}
+function csvButton(d, title, cls) {
+  const b = el("button", { class: cls, type: "button", text: "下載 CSV", "aria-label": "下載表格為 CSV" });
+  b.addEventListener("click", (ev) => { ev.stopPropagation(); downloadCsv(d, title); });
+  return b;
+}
+
 const hasTable = (d) => d.route !== "docs" && d.route !== "chat" && d.row_count > 0;
 const answerText = (d) => d.answer ?? d.explanation ?? "";
 
 // 完整的結果內容：圖表 + 表格 + SQL（窄螢幕放在卡片內；寬螢幕放在右側面板）
-function buildDetail(d, { limit, sqlOpen, sections }) {
+function buildDetail(d, { limit, sqlOpen, sections, title = "" }) {
   const frag = document.createDocumentFragment();
-  const add = (title, node) => frag.append(sections ? el("div", { class: "section" }, [el("h3", { text: title }), node]) : node);
+  const add = (name, node, extra = null) => frag.append(sections
+    ? el("div", { class: "section" }, [extra ? el("div", { class: "section-h" }, [el("h3", { text: name }), extra]) : el("h3", { text: name }), node]) : node);
   const spec = hasTable(d) ? chartSpec(d.columns, d.rows) : null;
   if (spec) {
     const div = el("div", { class: "chart", "data-chart-type": spec.type, "data-series": String(spec.series.length), "data-axes": String(Math.max(...spec.axis) + 1), role: "img", "aria-label": "結果圖表" });
     add("圖表", div);
     requestAnimationFrame(() => drawChart(div, spec));
   }
-  if (hasTable(d)) add("資料表", buildTable(d.columns, d.rows, limit, d.row_count));
+  if (hasTable(d)) add("資料表", buildTable(d.columns, d.rows, limit, d.row_count), sections ? csvButton(d, title, "tool") : null);
   if (d.sql) add("查詢的 SQL", renderSql(sqlWithBinds(d), sqlOpen));
   if (sections && d.sources?.length) add("文件來源", buildSources(d.sources, true));
   return frag;
@@ -387,7 +500,7 @@ function renderPanel() {
   if (!hasTable(e.data) && !e.data.sql && !e.data.sources?.length) {
     panel.append(el("div", { class: "section" }, el("p", { class: "empty", text: "這次查詢沒有可顯示的結果。" })));
   } else {
-    panel.append(buildDetail(e.data, { limit: CONFIG.panelRows, sqlOpen: true, sections: true }));
+    panel.append(buildDetail(e.data, { limit: CONFIG.panelRows, sqlOpen: true, sections: true, title: e.data.template_title || e.question }));
   }
 }
 
@@ -395,10 +508,12 @@ function setActive(i) {
   const unchanged = i === activeIdx && panel.dataset.idx === String(i);
   activeIdx = i;
   entries.forEach((e, k) => e.card.classList.toggle("active", k === i && isWide()));
+  document.querySelectorAll("#toc .side-item").forEach((li, k) => li.classList.toggle("current", k === i));
   if (isWide() && !unchanged) renderPanel();
 }
 
-function feedbackRow(d) {
+function feedbackRow(e) {
+  const d = e.data;
   const row = el("div", { class: "foot" });
   if (typeof d.latency_ms === "number") {
     const rows = d.row_count > 0 ? `・共 ${d.row_count} 列` : "";
@@ -428,7 +543,34 @@ function feedbackRow(d) {
     });
   }
   row.append(up, down, status);
+  // 操作：複製、下載 CSV、重新查詢
+  const copy = el("button", { class: "tool", type: "button", text: "複製", "aria-label": "複製問題、回答與表格" });
+  copy.addEventListener("click", async (ev) => {
+    ev.stopPropagation();
+    try { await navigator.clipboard.writeText(plainAnswer(e)); copy.textContent = "已複製"; } catch { copy.textContent = "無法複製"; }
+    setTimeout(() => { copy.textContent = "複製"; }, 1500);
+  });
+  row.append(copy);
+  if (hasTable(d)) row.append(csvButton(d, d.template_title || e.question, "tool"));
+  const again = el("button", { class: "tool busy-off", type: "button", text: "重新查詢", "aria-label": "用同一個問題重新查詢" });
+  again.addEventListener("click", (ev) => { ev.stopPropagation(); ask(e.question, { choice: e.choice, display: e.display }); });
+  row.append(again);
   return row;
+}
+
+// 接著問：後端依這次的程式、對象與引用文件產生；這段對話問過的不再出現
+function buildFollowups(d) {
+  const norm = (q) => q.replace(/[\s？?。，,：:]/g, "");
+  const asked = new Set(entries.map((x) => norm(x.question)));
+  const qs = (d.followups || []).filter((q) => !asked.has(norm(q)));
+  if (!qs.length) return null;
+  return el("div", { class: "next" }, [el("p", { class: "next-h", text: "接著問" }),
+    el("div", { class: "opts" }, qs.map((q) => {
+      const b = el("button", { class: "next-q", type: "button", text: q });
+      b.disabled = busy;
+      b.addEventListener("click", (ev) => { ev.stopPropagation(); ask(q); });
+      return b;
+    }))]);
 }
 
 function badges(d) {
@@ -508,7 +650,9 @@ function renderCard(e, idx) {
       card.append(buildDetail(d, { limit: CONFIG.inlineRows, sqlOpen: false, sections: false }));
     }
   }
-  card.append(feedbackRow(d));
+  const next = buildFollowups(d);
+  if (next) card.append(next);
+  card.append(feedbackRow(e));
 }
 
 function rerenderAll() {   // 視窗在寬／窄之間切換時，重畫所有已完成的回答
@@ -525,22 +669,25 @@ window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer
 
 function setBusy(v) {
   busy = v; sendBtn.disabled = v; input.disabled = v;
-  document.querySelectorAll(".chip").forEach((c) => { c.disabled = v; });
+  document.querySelectorAll(".chip, .next-q, .busy-off, .new-btn, #newBtnTop").forEach((c) => { c.disabled = v; });
   if (!v) input.focus();
 }
 
 async function ask(question, { choice = null, display = null } = {}) {
   question = question.trim();
   if (!question || busy) return;
+  closeExamples();
   document.querySelector(".welcome")?.remove();
+  if (!startedAt) startedAt = Date.now();
   thread.append(el("div", { class: "msg-user", text: display || question }));
 
   const secs = el("span", { text: "0" });
   const card = el("div", { class: "card" }, el("div", { class: "pending" }, [el("div", { class: "spinner" }), el("span", { text: "思考中… 已 " }), secs, el("span", { text: " 秒" })]));
   thread.append(card);
-  const entry = { data: null, card, question };
+  const entry = { data: null, card, question, display, choice };
   entries.push(entry);
   const idx = entries.length - 1;
+  renderToc();
   if (isWide()) {   // 面板先顯示骨架畫面
     disposeCharts();
     panel.replaceChildren(el("div", { class: "skeleton", style: "height:46px;width:60%" }), el("div", { class: "skeleton", style: "height:240px" }), el("div", { class: "skeleton", style: "height:160px" }));
@@ -565,6 +712,8 @@ async function ask(question, { choice = null, display = null } = {}) {
     renderCard(entry, idx);
     setBusy(false);
     if (isWide()) setActive(idx);
+    saveConversation();
+    renderToc();
     card.scrollIntoView({ block: "start", behavior: "smooth" });   // 讓使用者從回答開頭讀起
   }
 }
@@ -575,8 +724,133 @@ function showWelcome() {
     b.addEventListener("click", () => ask(q));
     return b;
   });
-  thread.append(el("div", { class: "welcome" }, [el("h2", { text: "想知道什麼？直接問我" }), el("p", { text: "點下面的範例，或在下方輸入你的問題" }), el("div", { class: "chips" }, chips)]));
+  const more = el("button", { class: "act ghost", type: "button", text: "💡 看更多範例（依業務、財務、採購、文件分類）" });
+  more.addEventListener("click", (ev) => { ev.stopPropagation(); openExamples(); });
+  thread.append(el("div", { class: "welcome" }, [el("h2", { text: "想知道什麼？直接問我" }), el("p", { text: "點下面的範例，或在下方輸入你的問題" }),
+    el("div", { class: "chips" }, chips), el("div", { class: "more" }, more)]));
 }
+
+// ---------------------------------------------------------------- 範例選單
+const exBox = $("examples"), exBtn = $("exBtn");
+function buildExamples() {
+  const close = el("button", { class: "tool", type: "button", text: "關閉", "aria-label": "關閉範例" });
+  close.addEventListener("click", closeExamples);
+  exBox.replaceChildren(el("div", { class: "ex-top" }, [el("b", { text: "範例問題（點了直接送出）" }), close]),
+    ...CONFIG.exampleGroups.map((g) => el("div", { class: "ex-group" }, [
+      el("h4", {}, [document.createTextNode(g.title), ...(g.sub ? [el("span", { class: "sub", text: `— ${g.sub}` })] : [])]),
+      el("div", { class: "ex-items" }, g.items.map((q) => {
+        const b = el("button", { class: "ex-item", type: "button", text: q });
+        b.addEventListener("click", () => { if (!busy) ask(q); });
+        return b;
+      }))])));
+}
+function openExamples() { if (!exBox.childElementCount) buildExamples(); exBox.hidden = false; exBtn.setAttribute("aria-expanded", "true"); exBox.querySelector(".ex-item")?.focus(); }
+function closeExamples() { if (exBox.hidden) return; exBox.hidden = true; exBtn.setAttribute("aria-expanded", "false"); }
+exBtn.addEventListener("click", (ev) => { ev.stopPropagation(); exBox.hidden ? openExamples() : closeExamples(); });
+document.addEventListener("click", (ev) => { if (!exBox.hidden && !exBox.contains(ev.target)) closeExamples(); });
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeExamples(); setDrawer(false); } });
+
+// ---------------------------------------------------------------- 對話紀錄（只存在這台電腦的瀏覽器 localStorage）
+const STORE_KEY = "erp-assistant.conversations.v1";
+const tocBox = $("toc"), convoBox = $("convos");
+function loadConversations() {
+  try { const v = JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function storeConversations(list) {
+  while (list.length) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); return; } catch { list.pop(); }   // 空間不夠就丟掉最舊的
+  }
+  try { localStorage.removeItem(STORE_KEY); } catch { /* 瀏覽器不允許儲存 */ }
+}
+function saveConversation() {
+  const items = entries.filter((e) => e.data).map(({ question, display, choice, data }) => ({ question, display, choice, data }));
+  if (!items.length) return;
+  const convo = { id: sessionId, title: items[0].display || items[0].question, started: startedAt || Date.now(), updated: Date.now(), items, history: history.slice(-MAX_HISTORY) };
+  storeConversations([convo, ...loadConversations().filter((c) => c.id !== sessionId)].slice(0, CONFIG.maxConversations));
+  renderConversations();
+}
+function whenText(t) {
+  const d = new Date(t), now = new Date();
+  const hm = d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toDateString() === now.toDateString() ? `今天 ${hm}` : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+}
+function sideItem(title, sub, onGo, onDel, current) {
+  const go = el("button", { class: "go", type: "button", title }, [el("span", { class: "t", text: title }), ...(sub ? [el("span", { class: "d", text: sub })] : [])]);
+  go.addEventListener("click", onGo);
+  const li = el("li", { class: "side-item" + (current ? " current" : "") }, go);
+  if (onDel) {
+    const del = el("button", { class: "del", type: "button", text: "✕", "aria-label": `刪除對話：${title}` });
+    del.addEventListener("click", (ev) => { ev.stopPropagation(); onDel(); });
+    li.append(del);
+  }
+  return li;
+}
+function renderConversations() {
+  const list = loadConversations();
+  convoBox.replaceChildren(...(list.length ? list.map((c) => sideItem(c.title, `${whenText(c.updated)}・${c.items.length} 題`,
+    () => openConversation(c.id), () => deleteConversation(c.id), c.id === sessionId)) : [el("li", { class: "side-empty", text: "還沒有紀錄" })]));
+}
+function renderToc() {
+  tocBox.replaceChildren(...(entries.length ? entries.map((e, i) => sideItem(e.display || e.question, e.data ? "" : "查詢中…", () => {
+    if (isWide()) setActive(i);
+    e.card.previousElementSibling?.scrollIntoView({ block: "start", behavior: "smooth" });
+    setDrawer(false);
+  }, null, i === activeIdx)) : [el("li", { class: "side-empty", text: "問了問題會列在這裡，點一下跳回該題" })]));
+}
+function resetThread() {
+  disposeCharts();
+  thread.replaceChildren();
+  entries.length = 0; history.length = 0; activeIdx = -1; startedAt = null;
+  delete panel.dataset.idx;
+}
+function newConversation() {
+  if (busy) return;
+  resetThread();
+  sessionId = newId();
+  renderPanel(); showWelcome(); renderToc(); renderConversations(); setDrawer(false);
+  input.focus();
+}
+function openConversation(id) {
+  if (busy) return;
+  const c = loadConversations().find((x) => x.id === id);
+  if (!c) { renderConversations(); return; }
+  resetThread();
+  sessionId = c.id; startedAt = c.started;
+  history.push(...(c.history || []));
+  for (const it of c.items) {
+    thread.append(el("div", { class: "msg-user", text: it.display || it.question }));
+    const card = el("div", { class: "card" });
+    thread.append(card);
+    entries.push({ data: it.data, card, question: it.question, display: it.display, choice: it.choice || null });
+  }
+  entries.forEach((e, i) => renderCard(e, i));
+  if (isWide()) setActive(entries.length - 1); else renderPanel();
+  renderToc(); renderConversations(); setDrawer(false);
+  scrollDown();
+}
+function deleteConversation(id) {
+  if (!window.confirm("刪除這段對話紀錄？")) return;
+  storeConversations(loadConversations().filter((c) => c.id !== id));
+  if (id === sessionId && !busy) newConversation(); else renderConversations();
+}
+$("clearAll").addEventListener("click", () => {
+  if (!window.confirm("清除這台電腦上的全部對話紀錄？")) return;
+  try { localStorage.removeItem(STORE_KEY); } catch { /* 忽略 */ }
+  if (!busy) newConversation(); else renderConversations();
+});
+$("newBtn").addEventListener("click", newConversation);
+$("newBtnTop").addEventListener("click", newConversation);
+
+// 窄螢幕：左側欄收成抽屜
+const menuBtn = $("menuBtn");
+function setDrawer(open) {
+  layout.parentElement.classList.toggle("drawer-open", open && !sideQuery.matches);
+  menuBtn.setAttribute("aria-expanded", String(open && !sideQuery.matches));
+}
+function applySideMode() { document.body.classList.toggle("drawer-mode", !sideQuery.matches); setDrawer(false); }
+menuBtn.addEventListener("click", () => setDrawer(!document.body.classList.contains("drawer-open")));
+$("scrim").addEventListener("click", () => setDrawer(false));
+sideQuery.addEventListener("change", applySideMode);
 
 function autoGrow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; }
 input.addEventListener("input", autoGrow);
@@ -587,8 +861,11 @@ input.addEventListener("keydown", (e) => {
 form.addEventListener("submit", (e) => { e.preventDefault(); ask(input.value); });
 
 layout.classList.toggle("wide", isWide());
+applySideMode();
 renderPanel();
 showWelcome();
+renderToc();
+renderConversations();
 input.focus();
 </script>
 </body>

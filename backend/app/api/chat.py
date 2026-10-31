@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from .. import audit
-from ..agent import graph
+from ..agent import followups, graph
 
 router = APIRouter(prefix="/api")
 MAX_QUESTION_CHARS = 500
@@ -63,6 +63,12 @@ def chat(req: ChatRequest) -> dict:
     查詢失敗不是伺服器錯誤：一律回 HTTP 200，失敗原因放在 `error`。"""
     choice = req.choice.model_dump() if req.choice else None
     r = graph.run_agent(req.question, [t.model_dump() for t in req.history], req.session_id, choice=choice)
+    try:
+        nexts = followups.suggest(req.question, route=r.route, mode=r.mode, template_id=r.template_id, binds=r.binds,
+                                  columns=r.columns, rows=r.rows, params_readable=r.params_readable,
+                                  sources=r.sources, error=None if r.answer else r.error)
+    except Exception:  # noqa: BLE001 — 追問只是輔助，失敗不影響回答
+        nexts = []
     return {
         "question": req.question,
         "route": r.route,
@@ -86,6 +92,7 @@ def chat(req: ChatRequest) -> dict:
         "proposals": r.proposals,
         "suggestions": r.suggestions,
         "notes": r.notes,
+        "followups": nexts,
         "warning": r.warning,
         "error": r.error,
         "audit_id": r.audit_id,
