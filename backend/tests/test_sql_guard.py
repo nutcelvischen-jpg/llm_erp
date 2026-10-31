@@ -168,3 +168,19 @@ def test_all_sql_examples_in_schema_doc_pass():
     assert len(blocks) >= 3
     for b in blocks:
         ok(b)
+
+
+# ---------- T14b：綁定參數 ----------
+def test_bind_params_kept_as_colon_names():
+    g = validate('SELECT "客戶名稱" FROM "v_銷售明細" WHERE "客戶名稱" = :customer AND "訂單日期" >= :date_from')
+    assert g.ok and ":customer" in g.sql and ":date_from" in g.sql and "%(" not in g.sql
+
+
+def test_like_percent_untouched_by_bind_restore():
+    g = validate("SELECT \"料號\" FROM \"v_庫存狀況\" WHERE \"品名\" LIKE '%軸承%' AND \"料號\" = :sku")
+    assert g.ok and "'%軸承%'" in g.sql and ":sku" in g.sql
+
+
+def test_constant_limit_kept_and_optional_filter():
+    g = validate('SELECT 1 FROM "v_銷售明細" WHERE (CAST(:c AS TEXT) IS NULL OR "客戶名稱" = :c) LIMIT 5')
+    assert g.ok and g.sql.endswith("LIMIT 5") and g.sql.count(":c") == 2

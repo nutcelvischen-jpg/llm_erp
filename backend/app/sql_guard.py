@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 import sqlglot
@@ -22,6 +23,7 @@ ALLOWED_SCHEMAS = {"", "erp"}
 DEFAULT_LIMIT = 200
 MAX_LIMIT = 1000
 
+_PLACEHOLDER = re.compile(r"%\((\w+)\)s")
 _SET_OPS = (exp.Union, exp.Intersect, exp.Except)
 _FORBIDDEN_NODE_NAMES = [
     "Insert", "Update", "Delete", "Drop", "Alter", "Create", "Command", "Merge", "Copy",
@@ -139,4 +141,6 @@ def validate(sql: str) -> GuardResult:
     if reason:
         return _reject(original, reason)
     _apply_limit(root)
-    return GuardResult(True, root.sql(dialect="postgres", comments=False))
+    out = root.sql(dialect="postgres", comments=False)
+    # sqlglot 會把 :name 綁定參數輸出成 %(name)s，SQLAlchemy 再跳脫成 %% 而出錯；還原成 :name
+    return GuardResult(True, _PLACEHOLDER.sub(r":\1", out))

@@ -222,3 +222,10 @@
 - `README.md`：10 分鐘從零到 Demo（含 LM Studio 人工步驟、`make` 指令順序、Demo 與驗證）、架構圖、已知限制（AI 產生 SQL、數字檢查只查存在、RAG 正確率、路由、無權限、單人並行、資料隨 seed 日期、預警長度、LINE）、如何換模型（聊天／embedding 需重建向量／reranker）、如何接真實 ERP（View 指向客戶資料、非 Postgres 建議 ETL、唯讀帳號、範例與黃金題重做、文件、預警規則）。
 - `SPEC.md` 新增「7. PoC 實作狀態」：已實作案例、量測的正確率與延遲、與規格的差異（LM Studio、無 LangGraph、單頁網頁、AI SQL、jieba BM25、無 SSO）、正式導入前要補的事項。
 - 檢查：README 提到的 make 目標都存在；`make test` 362 passed。
+
+## T14b 查詢目錄骨架 ✅
+- Elvis 決定做 T14b–T14f，並指定未命中時的處理（列出最接近的既定程式讓使用者確認，AI 不寫 SQL）；已寫入 TASKS.md「架構調整說明」。
+- `backend/app/catalog/`：`base.py`（ParamSpec、BuiltQuery、QueryTemplate；多一個 `columns(params)` 供確認時預覽結果欄位；`guarded()` 讓模板 SQL 也必經守門員）、`periods.py`（`resolve_period` 全部代碼＋`compare_periods` yoy_ytd／mom／qoq，月底與 2/29 取該月最後一天）、`entities.py`（`EntityIndex`：NFKC、去空白、不分大小寫、忽略公司字尾；exact → fuzzy → ambiguous → none；正式版從唯讀 View 讀名單並快取）。
+- `sql_guard.validate()`：輸出前把 `%(name)s` 還原成 `:name`；補 3 個測試（綁定參數保留、LIKE 的 % 不受影響、常數 LIMIT 保留＋可選條件）。
+- 測試：`test_periods.py`（4 個 today 共 26 組起訖＋標籤、9 個不合法代碼、三種比較含閏年）、`test_entities.py`（完全相同、省略公司、唯一包含、錯字、不明確、查無、料號大小寫、快取）。
+- 驗收：`make test` 413 passed。
