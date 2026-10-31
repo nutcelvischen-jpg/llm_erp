@@ -122,3 +122,25 @@ def ingest_pdf(client: QdrantClient, path: Path, embed: Callable[[list[str]], li
     if not force and indexed_mtime(client, name, doc_id_of(path.name)) == mt:
         return None
     return ingest_chunks(client, chunk_blocks(parse_pdf(path)), embed, mt, name)
+
+
+def ingest_folder(client: QdrantClient, folder: Path, embed: Callable[[list[str]], list[list[float]]],
+                  force: bool = False, recreate: bool = False,
+                  progress: Callable[[int, int, str, int | None], None] | None = None) -> dict:
+    """索引資料夾內所有 PDF。progress(i, n, 檔名, 寫入塊數或 None=跳過)。回傳統計。"""
+    import time
+
+    t0 = time.time()
+    name = ensure_collection(client, recreate=recreate)
+    pdfs = sorted(Path(folder).glob("*.pdf"))
+    written, skipped = 0, 0
+    for i, p in enumerate(pdfs, 1):
+        n = ingest_pdf(client, p, embed, force=force or recreate, name=name)
+        if n is None:
+            skipped += 1
+        else:
+            written += n
+        if progress:
+            progress(i, len(pdfs), p.name, n)
+    return {"files": len(pdfs), "written": written, "skipped": skipped,
+            "points": client.count(name, exact=True).count, "seconds": round(time.time() - t0, 1)}

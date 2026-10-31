@@ -1,13 +1,11 @@
 """把資料夾內的 PDF 索引進 Qdrant：python scripts/ingest_docs.py data/docs [--force] [--recreate]"""
 import argparse
-import time
-from pathlib import Path
 
 from qdrant_client import QdrantClient
 
 from backend.app import llm
 from backend.app.config import settings
-from backend.app.rag.ingest import ensure_collection, ingest_pdf
+from backend.app.rag.ingest import ingest_folder
 
 ap = argparse.ArgumentParser()
 ap.add_argument("folder")
@@ -15,18 +13,11 @@ ap.add_argument("--force", action="store_true", help="忽略 mtime，全部重�
 ap.add_argument("--recreate", action="store_true", help="刪除並重建 collection")
 a = ap.parse_args()
 
-client = QdrantClient(url=settings.qdrant_url)
-name = ensure_collection(client, recreate=a.recreate)
-pdfs = sorted(Path(a.folder).glob("*.pdf"))
-t0, total, skipped = time.time(), 0, 0
-for i, p in enumerate(pdfs, 1):
-    t = time.time()
-    n = ingest_pdf(client, p, llm.embed, force=a.force or a.recreate, name=name)
-    if n is None:
-        skipped += 1
-        print(f"[{i}/{len(pdfs)}] 跳過（未變更） {p.name}")
-    else:
-        total += n
-        print(f"[{i}/{len(pdfs)}] {n:3} 塊  {time.time() - t:4.1f}s  {p.name}")
-cnt = client.count(name, exact=True).count
-print(f"\n完成：本次寫入 {total} 塊，跳過 {skipped} 份；collection {name} 共 {cnt} 筆；耗時 {time.time() - t0:.0f} 秒")
+
+def show(i, n, name, written):
+    print(f"[{i}/{n}] " + ("跳過（未變更） " if written is None else f"{written:3} 塊  ") + name)
+
+
+s = ingest_folder(QdrantClient(url=settings.qdrant_url), a.folder, llm.embed, a.force, a.recreate, show)
+print(f"\n完成：本次寫入 {s['written']} 塊，跳過 {s['skipped']} 份；collection {settings.qdrant_collection} "
+      f"共 {s['points']} 筆；耗時 {s['seconds']:.0f} 秒")

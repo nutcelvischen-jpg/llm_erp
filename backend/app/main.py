@@ -7,12 +7,13 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .api import chat
+from .api import admin, chat
 from .config import settings
 
 logging.basicConfig(level=settings.log_level)
 app = FastAPI(title="ERP LLM PoC")
 app.include_router(chat.router)
+app.include_router(admin.router)
 
 WEB_DIR = Path(__file__).parent / "web"
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")

@@ -47,7 +47,7 @@ def test_feedback_for_missing_audit_returns_none():
 
 @pytest.mark.db
 def test_list_recent_order_and_clamp():
-    ids = [audit.write(AuditRecord(question=f"q{i}")) for i in range(2)]
+    ids = [audit.write(AuditRecord(question=f"q{i}", session_id="pytest-order")) for i in range(2)]
     rec = audit.list_recent(2)
     assert [r["id"] for r in rec] == ids[::-1]
     assert len(audit.list_recent(0)) == 1

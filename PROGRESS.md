@@ -120,3 +120,12 @@
 - `scripts/check_frontend.py` 新增 19 項（共 85 項全過）：docs 無表格、來源展開與內容、session／history 傳送、回饋送出／取消／失敗、警示、部分失敗、寬螢幕來源面板、回答與來源的 XSS。執行方式：`uv run --with playwright python scripts/check_frontend.py`（playwright 不在專案依賴）。
 - 驗收：`make test` 316 passed；`make test-llm` 24 passed（含三題 Demo 打真實 API 並送回饋）；真實瀏覽器開 http://localhost:8000：「今年營收最高的三個客戶」→ 表格（華發實業 11,979,390／鴻遠機械／億達企業）＋警示＋SQL，2.5 秒；「鴻遠機械的合約，延遲交貨罰款怎麼算？」→ 文字回答（0.3%、10% 上限）＋來源「銷售合約_鴻遠機械.pdf 第 2 頁 › 第五條」，10.4 秒（dev server 第一次載入 reranker）。
 - 備註：`/health` 顯示 LM Studio 另外載入了 `phonon-40m-multilingual`，不是本專案的模型，會多占記憶體。
+
+## T26 管理端點 ✅
+- `backend/app/api/admin.py`（已掛進 `main.py`）：
+  - `GET /admin/audit?limit=50`（1–500）→ `{count, items}`。
+  - `POST /admin/ingest` body `{"path": "data/docs", "force": false}` → 202，背景執行緒重建索引；只允許專案 `data/` 底下存在的資料夾（其他 400）；執行中再送 409。另加 `GET /admin/ingest` 查進度與結果。索引迴圈搬到 `rag/ingest.ingest_folder()`，`scripts/ingest_docs.py` 改為共用（`make ingest` 輸出不變）。
+  - `GET /admin/stats` → 今日（Asia/Taipei）問題數、平均延遲、各 route 數量、SQL 查詢數與成功率、錯誤數；預設排除 `session_id` 為 `pytest…` 的測試紀錄，`?include_tests=true` 才包含。
+- 驗收（對執行中的 `make dev`）：三個端點皆 HTTP 200。audit 回最近紀錄；ingest 202 → 狀態 done（20 份全部跳過、355 筆）；stats `{"questions": 2, "avg_latency_ms": 6469, "by_route": {"docs": 1, "sql": 1}, "sql_success_rate": 1.0}`（含測試紀錄時 27 題）；`path: "../"` 回 400。`make test` 325 passed、`make test-db` 65 passed。
+- 清理：T24 測試曾寫入 2 筆沒有 session_id 的測試紀錄（id 17、18，問題 q0／q1），已刪除，測試改帶 `pytest-` 前綴。
+- **注意：管理端點沒有驗證**。`make dev` 只綁 127.0.0.1；若要用 `--host 0.0.0.0` 給同網段的人看 Demo，任何人都能觸發重建索引、讀稽核紀錄。
