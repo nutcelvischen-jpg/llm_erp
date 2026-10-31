@@ -64,9 +64,9 @@ def _by_summary(f):
 
 ar_by_customer = QueryTemplate(
     id="ar_by_customer", title="欠款客戶清單",
-    description="列出有未收帳款（或已逾期、逾期超過 N 天）的客戶，含張數、金額、最長逾期天數",
+    description="【應收帳款】依未收金額排出欠款客戶（可只看已逾期或逾期超過 N 天），含張數、未收金額、最長逾期天數",
     examples=["哪些客戶有逾期未收的發票", "哪些客戶的應收逾期超過 60 天", "欠最多錢的前十個客戶",
-              "逾期超過 90 天的客戶有誰", "哪個客戶欠款最多", "目前有欠款的客戶清單"],
+              "逾期超過 90 天的客戶有誰", "哪個客戶欠款最多", "目前有欠款的客戶清單", "未收款金額排名前幾的客戶"],
     params=[OVERDUE_PARAM, ParamSpec("top_n", "int", "筆數", default=10, min=1, max=100),
             ParamSpec("order", "enum", "排序", default="desc", choices=ORDER_CHOICES)],
     build=_by_build, facts=_by_facts, summary=_by_summary,

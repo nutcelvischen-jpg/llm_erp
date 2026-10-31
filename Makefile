@@ -1,4 +1,4 @@
-.PHONY: docs setup up down logs dev test test-llm test-db seed ingest eval-sql eval-rag lint load-examples llm-up
+.PHONY: eval-intent docs setup up down logs dev test test-llm test-db seed ingest eval-sql eval-rag lint load-examples llm-up
 
 setup:
 	uv venv --python 3.12 --allow-existing
@@ -37,6 +37,9 @@ eval-sql:
 
 eval-rag:
 	uv run python scripts/eval_rag.py
+
+eval-intent:
+	uv run python scripts/eval_intents.py
 
 lint:
 	uv run ruff check backend scripts

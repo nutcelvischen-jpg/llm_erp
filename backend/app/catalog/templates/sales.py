@@ -66,7 +66,7 @@ def _rank_summary(f):
 
 sales_rank = QueryTemplate(
     id="sales_rank", title="銷售排名",
-    description="依客戶／產品／料號／產品類別／業務／區域，排出營收、毛利、毛利率、數量、訂單數或營收占比的前幾名（或後幾名）",
+    description="【銷售】依客戶／產品／料號／產品類別／業務／區域，排出營收、毛利、毛利率、數量、訂單數或營收占比的前幾名（或後幾名）。不含應收帳款（欠款、未收）",
     examples=["今年營收前五名的客戶", "哪個業務今年業績最好", "今年賣最多的三個料號", "各產品類別的毛利率排名",
               "毛利最低的五個客戶是誰", "各區域營收占比", "去年哪個產品賣得最好", "本月訂單最多的客戶"],
     params=[ParamSpec("dimension", "enum", "排名對象", default="客戶", choices={k: v for k, v in DIM_CHOICES.items()}),

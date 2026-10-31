@@ -1,0 +1,44 @@
+# T14d 意圖黃金集（40 題）：16 個既定程式各 2 題（措辭刻意與模板 examples 不同）＋ 8 題不支援。
+# params 只列「這題一定要對」的參數；period 以實際日期區間比對（this_year 與 ytd 視為相同）。
+# 評估：make eval-intent。門檻：模板 ≥ 95%、參數 ≥ 90%、不支援題誤判 0。不要為了過關改題目。
+- {id: I01, question: 今年到目前為止，業績貢獻最大的五家客戶是哪些？, template: sales_rank, params: {dimension: 客戶, metric: 營收, period: this_year, top_n: 5}}
+- {id: I02, question: 去年毛利率最低的三個產品類別, template: sales_rank, params: {dimension: 產品類別, metric: 毛利率, period: last_year, top_n: 3, order: asc}}
+- {id: I03, question: 上個月公司總共做了多少生意？, template: sales_total, params: {period: last_month}}
+- {id: I04, question: 台陽科技去年的營收跟毛利率, template: sales_total, params: {period: last_year, customer: 台陽科技}}
+- {id: I05, question: 幫我看最近一年每個月的業績變化, template: sales_trend, params: {grain: 月, period: "last_n_months:12"}}
+- {id: I06, question: 今年營收最低的是哪一個月？, template: sales_trend, params: {grain: 月, period: this_year, order: asc}}
+- {id: I07, question: 跟去年同一時間比，今年的營業額是增加還是減少？, template: sales_compare, params: {compare: yoy_ytd, metric: 營收, dimension: 整體}}
+- {id: I08, question: 本月跟上個月同期比，哪些業務員退步最多？, template: sales_compare, params: {compare: mom, dimension: 業務, order: 下滑最多}}
+- {id: I09, question: 上一季金額前三大的訂單, template: sales_largest_orders, params: {period: last_quarter, top_n: 3}}
+- {id: I10, question: 最近 90 天最大的一筆訂單是哪個客戶下的？, template: sales_largest_orders, params: {period: "last_n_days:90", top_n: 1}}
+- {id: I11, question: 公司現在在外面的應收帳款還有多少？, template: ar_summary, params: {overdue_gt: null}}
+- {id: I12, question: 鴻遠機械已經過了付款期限還沒付的帳款有多少？, template: ar_summary, params: {customer: 鴻遠機械, overdue_gt: 0}}
+- {id: I13, question: 拖欠貨款超過 90 天的客戶名單, template: ar_by_customer, params: {overdue_gt: 90}}
+- {id: I14, question: 目前應收金額最大的前 5 名客戶, template: ar_by_customer, params: {top_n: 5}}
+- {id: I15, question: 列出台陽科技每一張逾期的發票, template: ar_invoices, params: {customer: 台陽科技}}
+- {id: I16, question: 精興金屬逾期超過 30 天的是哪幾張發票？, template: ar_invoices, params: {customer: 精興金屬, overdue_gt: 30}}
+- {id: I17, question: 應收帳款依逾期天數分段的金額, template: ar_aging, params: {}}
+- {id: I18, question: 幫我做一下未收款的帳齡結構, template: ar_aging, params: {}}
+- {id: I19, question: 放在倉庫一年以上都沒動過的料號, template: stock_dead, params: {idle_days: 365}}
+- {id: I20, question: 有哪些呆料？逐一列出來, template: stock_dead, params: {}}
+- {id: I21, question: 呆滯料總共占用多少資金？, template: stock_dead_total, params: {}}
+- {id: I22, question: 超過 180 天沒異動的料號有幾個？, template: stock_dead_total, params: {idle_days: 180}}
+- {id: I23, question: 哪些零件快要不夠出貨了？, template: stock_shortage, params: {}}
+- {id: I24, question: 需要補貨的料號和建議下單數量, template: stock_shortage, params: {}}
+- {id: I25, question: GEAR-M2-40T 現在倉庫裡有多少？, template: stock_lookup, params: {sku: GEAR-M2-40T}}
+- {id: I26, question: fst-m8x30-hex 的安全庫存設多少？, template: stock_lookup, params: {sku: FST-M8x30-HEX}}
+- {id: I27, question: 哪 10 個料號的庫存數量最大？, template: stock_rank, params: {metric: 現有庫存, top_n: 10}}
+- {id: I28, question: 庫存價值最高的三個品項, template: stock_rank, params: {metric: 庫存金額, top_n: 3}}
+- {id: I29, question: 交貨最守時的供應商是哪一家？, template: supplier_ontime, params: {order: 最高}}
+- {id: I30, question: 列出各家供應商的到貨準時率, template: supplier_ontime, params: {}}
+- {id: I31, question: 去年整年跟供應商買了多少錢的東西？, template: purchase_summary, params: {period: last_year}}
+- {id: I32, question: 今年每個供應商分別採購了多少金額？, template: purchase_summary, params: {period: this_year, group: 供應商}}
+# ---------------- 不支援（應判 no_match，不得列出候選或直接執行）----------------
+- {id: I33, question: 業務部門的平均月薪是多少？, unsupported: true}
+- {id: I34, question: 下週台中天氣如何？, unsupported: true}
+- {id: I35, question: 主要競爭對手今年的市占率是多少？, unsupported: true}
+- {id: I36, question: 把台陽科技的信用額度調高到 100 萬, unsupported: true}
+- {id: I37, question: 幫我刪除上個月那張取消的訂單, unsupported: true}
+- {id: I38, question: 鴻遠機械合約的付款條件是什麼？, unsupported: true}
+- {id: I39, question: 特休要提前幾天申請？, unsupported: true}
+- {id: I40, question: 員工加班費的倍率是多少？, unsupported: true}

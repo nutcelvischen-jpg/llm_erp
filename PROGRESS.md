@@ -241,3 +241,16 @@
 - `data/golden/template_map.yaml`：T14 的 26 題資料型問題 → 模板＋參數（照 TASKS 的對照）。
 - 測試 `backend/tests/test_templates.py`：16 個模板結構（≥5 句 examples、enum 預設在白名單內）；每個 enum 標準值的組合都通過守門員且綁定參數齊全；含單引號／分號／DROP 的參數只出現在 binds；不合法 enum／期間丟錯、top_n 夾值、缺必填；facts／summary 以範例資料與空結果都產生不含 None 的句子；`db`：16 個模板預設參數在真實資料庫有結果且欄位與預覽一致；**26 題對照全部通過原本的 rows_match／contains**。
 - 驗收：`make test` 452 passed；`make test-db` 84 passed。
+
+## T14d 意圖辨識器 ✅
+- `backend/app/catalog/intent.py`：`recognize(question, today) -> Intent(kind, template_id, params, params_readable, message, options, candidates, proposals, notes)`。
+  1. 候選：16 個模板的 examples 做 embedding（第一次使用時建立、存記憶體），問題取各模板最大餘弦相似度前 5；最高分 < `INTENT_MIN_SIM`（0.35）直接 no_match，不呼叫 LLM。
+  2. LLM（`chat_json`，溫度 0、關閉思考）：prompt 含今天日期、候選的 id／標題／描述／例句／**結果欄位**／參數規格（標準值）與期間代碼；輸出 `status: match|unsure|unsupported`、`template_id`、`params`、`alternatives`。
+  3. `normalize_params`：enum 接受標準值或同義詞、int 夾值、period 語法驗證、entity 用 `EntityIndex`（exact／fuzzy 自動替換並記錄「已將『華發』視為『華發實業』」、ambiguous／none 反問並列選項）、未知參數丟棄、缺必填反問。
+  4. 結果四種（依 Elvis 的需求擴充 TASKS 的三種）：`template` 直接執行；`clarify` 反問；**`confirm`** 沒有明確命中時列出最多 3 個最接近的既定程式（標題、參數、結果欄位、改用預設的註記），使用者點選後才執行；`no_match` 婉拒（薪資、天氣、修改資料、文件問題等）。`confirm` 與 `no_match` 都寫入 `app.unmatched_questions`（新增 `sql/004_catalog.sql`，多一欄 `kind`；已對現有資料庫執行）。
+  5. **使用者要求的參數值不支援時不直接執行**：例如「各業務員毛利率跟去年比」，同期比較沒有毛利率，原本會默默改用營收；現在改走 confirm 並註明「指標不支援『毛利率』，改用『營收』」。
+  6. `confirm(template_id, params)`：使用者點選後後端重新驗證模板與參數（不信任前端傳回的值）。
+- 意圖黃金集 `data/golden/intents.yaml`（40 題：16 個模板各 2 題、8 題不支援）＋ `scripts/eval_intents.py`（`make eval-intent`；period 以實際日期區間比對）。
+- 調整：第一次跑 I14「應收金額最大的前 5 名客戶」被判成銷售排名 → 在兩個模板描述標明【銷售】／【應收帳款】並補一句措辭不同的 example（沒改題目）。
+- 測試 `backend/tests/test_intent.py`：候選排序與門檻、同義詞與夾值、不支援的參數值與期間 → confirm、省略參數用預設、不在候選的模板、實體四種狀態、缺必填、unsure 列候選（去重、排除不在候選或需反問者）、unsupported、LLM 例外、confirm 重新驗證、prompt 內容；真實 LLM 6 題。
+- 驗收：`make eval-intent` 連跑兩次 **模板 32/32 = 100%、參數 32/32 = 100%、不支援誤判 0/8**，平均 0.8–1.6 秒。`make test` 471 passed；`make test-llm` 全過。
