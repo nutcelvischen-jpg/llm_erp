@@ -1,0 +1,203 @@
+# 由 scripts/make_rag_golden.py 產生，請勿手改；要調整請改腳本後重新產生。
+- id: R01
+  question: 棧板最多可以堆疊幾層？
+  expect_file: SOP_出貨檢驗與包裝作業程序.pdf
+  expect_page: 2
+  expect_contains:
+  - 3 層
+  answer: 3 層
+- id: R02
+  question: 客訴對策實施後要追蹤多久？
+  expect_file: SOP_客訴處理作業程序.pdf
+  expect_page: 1
+  expect_contains:
+  - 追蹤
+  answer: 30 日
+- id: R03
+  question: 未經核准缺勤會怎麼處理？
+  expect_file: SOP_請假作業程序.pdf
+  expect_page: 2
+  expect_contains:
+  - 以曠職論
+  answer: 以曠職論，該日不給工資；繼續曠職三日或一個月累計六日，公司得依法終止契約
+- id: R04
+  question: 客戶餐敘的交際費每人每餐上限多少？
+  expect_file: SOP_費用報支作業程序.pdf
+  expect_page: 3
+  expect_contains:
+  - 每人每餐 1,000 元以內
+  answer: 1,000 元以內
+- id: R05
+  question: 批量 800 個的進料，抽樣數與允收數是多少？
+  expect_file: SOP_進料驗收作業程序.pdf
+  expect_page: 2
+  expect_contains:
+  - 501–1,200
+  answer: 批量 501–1,200：樣本 80 個，允收 2 個
+- id: R06
+  question: 每小時工資額怎麼計算？
+  expect_file: 人資_工作規則與加班費辦法.pdf
+  expect_page: 2
+  expect_contains:
+  - 除以 240
+  answer: 月薪（含固定津貼）除以 240
+- id: R07
+  question: 請假超過幾天要副總核准？
+  expect_file: 人資_請假與特休管理辦法.pdf
+  expect_page: 1
+  expect_contains:
+  - 逾 3 日
+  answer: 逾 3 日須副總經理核准
+- id: R08
+  question: 中鋼軸承材料供應品的不良率超過多少可以整批退貨？
+  expect_file: 採購合約_中鋼軸承材料.pdf
+  expect_page: 2
+  expect_contains:
+  - 0.3%
+  answer: 超過 0.3%
+- id: R09
+  question: 大成鋼鐵每批交貨要附什麼文件？
+  expect_file: 採購合約_大成鋼鐵.pdf
+  expect_page: 2
+  expect_contains:
+  - 材質證明書
+  answer: 原廠材質證明書（含爐號、化學成分、機械性質）
+- id: R10
+  question: 宏達齒輪材料延遲交貨，買方可以怎麼扣款？
+  expect_file: 採購合約_宏達齒輪材料.pdf
+  expect_page: 2
+  expect_contains:
+  - 0.4%
+  - 10%
+  answer: 每逾一日按延遲部分貨款 0.4% 扣款，上限 10%
+- id: R11
+  question: 永信金屬的外箱每箱淨重上限多少？
+  expect_file: 採購合約_永信金屬.pdf
+  expect_page: 2
+  expect_contains:
+  - 15 公斤
+  answer: 15 公斤
+- id: R12
+  question: 精密熱處理的熱處理變形量上限是多少？
+  expect_file: 採購合約_精密熱處理.pdf
+  expect_page: 2
+  expect_contains:
+  - 0.05 mm
+  answer: 不得超過 0.05 mm
+- id: R13
+  question: 6205-2RS 的基本額定動負荷是多少？
+  expect_file: 規格書_BRG-6205-2RS.pdf
+  expect_page: 1
+  expect_contains:
+  - 14.0 kN
+  answer: 14.0 kN
+- id: R14
+  question: FST-M8x30-HEX 的強度等級與螺紋規格是什麼？
+  expect_file: 規格書_FST-M8x30-HEX.pdf
+  expect_page: 1
+  expect_contains:
+  - M8 × 1.25
+  answer: 強度等級 8.8，M8 × 1.25
+- id: R15
+  question: GEAR-M2-40T 的節圓直徑與外徑是多少？
+  expect_file: 規格書_GEAR-M2-40T.pdf
+  expect_page: 1
+  expect_contains:
+  - 節圓直徑
+  - 84 mm
+  answer: 節圓直徑 80 mm，外徑 84 mm
+- id: R16
+  question: 力發金屬的信用額度是多少？
+  expect_file: 銷售合約_力發金屬.pdf
+  expect_page: 2
+  expect_contains:
+  - 新臺幣 1,000,000 元
+  answer: 新臺幣 1,000,000 元
+- id: R17
+  question: 台陽科技的驗收期限是多久？
+  expect_file: 銷售合約_台陽科技.pdf
+  expect_page: 2
+  expect_contains:
+  - 7 個工作日
+  answer: 收貨後 7 個工作日內
+- id: R18
+  question: 新祥科技的產品保固期多久？
+  expect_file: 銷售合約_新祥科技.pdf
+  expect_page: 2
+  expect_contains:
+  - 24 個月
+  answer: 自交貨日起 24 個月
+- id: R19
+  question: 明誠金屬的合約中，延遲交貨的違約金怎麼計算？
+  expect_file: 銷售合約_明誠金屬.pdf
+  expect_page: 2
+  expect_contains:
+  - 1.5%
+  answer: 每逾一週（不足一週以一週計），按延遲交付部分貨款（未稅）之 1.5% 計付違約金，累計金額以該部分貨款之 12% 為上限。
+- id: R20
+  question: 鴻遠機械的合約付款條件是什麼？
+  expect_file: 銷售合約_鴻遠機械.pdf
+  expect_page: 2
+  expect_contains:
+  - 月結 30 天
+  answer: 月結 30 天，每月 25 日結帳
+- id: R21
+  question: 特休沒休完怎麼處理？
+  expect_file: 人資_請假與特休管理辦法.pdf
+  expect_page: 2
+  expect_contains:
+  - 折算發給工資
+  answer: 公司依年度終結前一日工資折算發給，或協商遞延
+- id: R22
+  question: 事假一年可以請幾天？
+  expect_file: 人資_請假與特休管理辦法.pdf
+  expect_page: 1
+  expect_contains:
+  - 每年 14 日
+  answer: 每年 14 日，不給薪
+- id: R23
+  question: 明誠金屬的包裝每箱淨重上限多少？
+  expect_file: 銷售合約_明誠金屬.pdf
+  expect_page: 3
+  expect_contains:
+  - 20 公斤
+  answer: 20 公斤
+- id: R24
+  question: FST-M8x30-HEX 的抗拉強度與鹽霧規格是多少？
+  expect_file: 規格書_FST-M8x30-HEX.pdf
+  expect_page: 1
+  expect_contains:
+  - 800 MPa
+  answer: 抗拉強度 800 MPa 以上，鹽霧 48 小時無白鏽
+- id: R25
+  question: 鴻遠機械年度採購達多少可以拿到銷售折讓？折讓比例是多少？
+  expect_file: 銷售合約_鴻遠機械.pdf
+  expect_page: 3
+  expect_contains:
+  - 20,000,000
+  answer: 累計採購 2,000 萬元以上折讓 2%，3,000 萬元以上折讓 3%
+- id: R26
+  question: 公司的年終獎金發幾個月？
+  refusal: true
+  expect_contains:
+  - 查無
+- id: R27
+  question: 員工旅遊每人補助多少錢？
+  refusal: true
+  expect_contains:
+  - 查無
+- id: R28
+  question: 公司幫員工提撥的退休金比例是多少？
+  refusal: true
+  expect_contains:
+  - 查無
+- id: R29
+  question: 育嬰留職停薪要怎麼申請？
+  refusal: true
+  expect_contains:
+  - 查無
+- id: R30
+  question: 遠端工作每週最多可以幾天？
+  refusal: true
+  expect_contains:
+  - 查無

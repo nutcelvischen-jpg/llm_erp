@@ -1,8 +1,15 @@
 import pytest
 
 from backend.app.llm import ChatResult, LLMError
-from backend.app.rag.answer import (NO_ANSWER, answer, attach_sources, build_messages, cited_numbers,
-                                    format_context, to_source)
+from backend.app.rag.answer import (
+    NO_ANSWER,
+    answer,
+    attach_sources,
+    build_messages,
+    cited_numbers,
+    format_context,
+    to_source,
+)
 from backend.app.rag.retrieve import Hit
 
 
@@ -55,7 +62,7 @@ def test_attach_sources_drops_invalid_numbers():
 
 
 def test_attach_sources_no_citation_keeps_first_two():
-    text, src = attach_sources("違約金 0.3%。", HITS)
+    _, src = attach_sources("違約金 0.3%。", HITS)
     assert len(src) == 2 and src[0].page == 2
 
 
@@ -108,3 +115,13 @@ def test_real_penalty_answer():
     assert r.sources
     assert any(s.file_name == "銷售合約_鴻遠機械.pdf" and s.page == 2 for s in r.sources)
     assert all(s.file_name == "銷售合約_鴻遠機械.pdf" for s in r.sources)
+
+
+def test_trailing_refusal_dropped_when_answer_has_citations():
+    r = answer("q", HITS, chat=FakeChat(f"- 上限 10% [來源 1]\n\n{NO_ANSWER}"))
+    assert r.text == "- 上限 10% [來源 1]" and len(r.sources) == 1
+
+
+def test_refusal_without_citations_is_kept():
+    r = answer("q", HITS, chat=FakeChat(f"文件未提及。\n{NO_ANSWER}"))
+    assert r.text.endswith(NO_ANSWER) and r.sources == []

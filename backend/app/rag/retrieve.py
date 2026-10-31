@@ -105,7 +105,7 @@ def retrieve(query: str, top_k: int = 20, top_n: int = 5, doc_type: str | None =
     rerank = rerank or _default_rerank
     try:
         ranked = rerank(query, [h.text for h in hits], top_n)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — reranker 失敗時退回 RRF 順序
         log.warning("reranker 失敗，改用 RRF 順序：%s", e)
         return hits[:top_n]
     out = []

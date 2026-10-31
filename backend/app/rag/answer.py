@@ -78,6 +78,14 @@ def is_refusal(text: str) -> bool:
     return "查無" in text
 
 
+def drop_trailing_refusal(text: str) -> str:
+    """模型有時答完又在最後另起一段補「查無相關資料」；已有引用時刪掉這段，避免自相矛盾。"""
+    paras = text.rstrip().split("\n")
+    if len(paras) > 1 and paras[-1].strip() == NO_ANSWER and cited_numbers(text):
+        return "\n".join(paras[:-1]).rstrip()
+    return text
+
+
 def attach_sources(text: str, hits: list[Hit]) -> tuple[str, list[Source]]:
     """只保留被引用的來源，並把回答中的編號改成新來源清單的編號；不存在的編號移除。
     沒有任何引用時：拒答不附來源，否則保留前 2 筆。"""
@@ -108,10 +116,10 @@ def answer(question: str, hits: list[Hit], *, chat: Callable | None = None) -> R
     chat = chat or _default_chat
     try:
         res = chat(build_messages(question, hits))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — 回答失敗不能拖垮整個請求
         log.warning("RAG 回答失敗：%s", e)
         return RagAnswer(f"文件回答暫時無法產生：{e}", [to_source(h) for h in hits[:FALLBACK_SOURCES]],
                          error=str(e))
-    text = (res.text or "").strip() or NO_ANSWER
+    text = drop_trailing_refusal((res.text or "").strip()) or NO_ANSWER
     text, sources = attach_sources(text, hits)
     return RagAnswer(text, sources, res.prompt_tokens, res.completion_tokens, res.latency_ms)

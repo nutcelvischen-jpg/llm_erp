@@ -40,7 +40,7 @@ def client():
 
 
 def kw(client):
-    return dict(client=client, embed=fake_embed, name="t")
+    return {"client": client, "embed": fake_embed, "name": "t"}
 
 
 def test_candidates_returns_hits_with_payload(client):

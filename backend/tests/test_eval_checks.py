@@ -112,3 +112,30 @@ def test_evaluate_rows_match_with_reference_and_any_count():
 def test_evaluate_contains():
     assert ec.evaluate({"contains": ["甲"]}, ans(rows=[["甲"]]))[0]
     assert not ec.evaluate({"contains": ["乙"]}, ans(rows=[["甲"]]))[0]
+
+
+# ---------- RAG ----------
+from backend.app.eval_checks import normalize_text, rag_contains, rag_refused  # noqa: E402
+
+
+def test_normalize_text_layout_only():
+    assert normalize_text("月結 30 天") == normalize_text("月結30天")
+    assert normalize_text("HRC 58–62") == normalize_text("HRC 58-62") == normalize_text("HRC 58～62")
+    assert normalize_text("新臺幣 5,000,000 元") == normalize_text("新台幣5,000,000元")
+    assert normalize_text("M8 × 1.25") == normalize_text("M8x1.25")
+    assert normalize_text("０．３％") == normalize_text("0.3%")
+    assert normalize_text("⼩時") == "小時"
+
+
+def test_rag_contains_is_strict_on_values():
+    assert rag_contains("- 每逾一日 0.3%，上限 10% [來源 1]", ["0.3%", "10%"]) == (True, "")
+    ok, why = rag_contains("每逾一日 0.35%", ["0.3%", "10%"])
+    assert not ok and "10%" in why
+    assert not rag_contains("新臺幣 500,000 元", ["新臺幣 5,000,000 元"])[0]
+    assert not rag_contains("月結 3 天", ["月結 30 天"])[0]
+
+
+def test_rag_refused():
+    assert rag_refused("依現有文件查無相關資料。")
+    assert not rag_refused("年終獎金 2 個月")
+    assert not rag_refused(None)

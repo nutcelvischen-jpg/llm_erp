@@ -87,3 +87,28 @@ def evaluate(check: dict, ans, ref_rows: list[list] | None = None) -> tuple[bool
     if "rows_match" in check:
         return rows_match(ref_rows or [], ans.rows, ans.row_count, same_count=not check.get("any_count"))
     return True, ""
+
+
+# ---------- RAG 評估（data/golden/rag.yaml）----------
+_DASHES = str.maketrans({c: "-" for c in "–—‒―−－~～"})
+
+
+def normalize_text(s: str) -> str:
+    """比對前正規化：PDF 部首字元（clean_text）、全形英數、去空白、破折號與波浪號統一、臺→台、×→x。
+    只消除排版差異，不放寬語意（數字與用字仍須相同）。"""
+    from .rag.parse import clean_text
+
+    s = clean_text(s or "")
+    s = "".join(chr(ord(c) - 0xFEE0) if 0xFF01 <= ord(c) <= 0xFF5E and c != "～" else c for c in s)
+    s = s.translate(_DASHES).replace("臺", "台").replace("×", "x")
+    return "".join(s.split())
+
+
+def rag_contains(text: str, phrases: list[str]) -> tuple[bool, str]:
+    t = normalize_text(text)
+    missing = [p for p in phrases if normalize_text(p) not in t]
+    return (not missing, "" if not missing else f"回答缺少：{missing}")
+
+
+def rag_refused(text: str) -> bool:
+    return "查無" in (text or "")
