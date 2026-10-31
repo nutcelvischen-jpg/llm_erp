@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     app_port: int = 8000
     app_tz: str = "Asia/Taipei"
     log_level: str = "INFO"
+    scheduler_enabled: bool = True
     line_channel_access_token: str = ""
     line_target_id: str = ""
 

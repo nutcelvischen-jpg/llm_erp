@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -9,9 +10,19 @@ from fastapi.staticfiles import StaticFiles
 from . import db
 from .api import admin, chat
 from .config import settings
+from .jobs import scheduler
 
 logging.basicConfig(level=settings.log_level)
-app = FastAPI(title="ERP LLM PoC")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+
+app = FastAPI(title="ERP LLM PoC", lifespan=lifespan)
 app.include_router(chat.router)
 app.include_router(admin.router)
 

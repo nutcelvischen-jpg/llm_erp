@@ -95,6 +95,23 @@ def ingest_status() -> dict:
     return dict(_ingest_state)
 
 
+# ---------- 排程工作 ----------
+@router.post("/jobs/dead_stock/run")
+def run_dead_stock_now() -> dict:
+    """手動觸發呆滯庫存與缺料預警（Demo 用），同步執行並寫入 app.notifications。"""
+    from ..jobs import scheduler
+
+    try:
+        r = scheduler.run_dead_stock()
+    except scheduler.JobBusy as e:
+        raise HTTPException(409, str(e)) from e
+    except Exception as e:
+        log.exception("手動執行呆滯庫存預警失敗")
+        raise HTTPException(503, f"呆滯庫存預警執行失敗：{str(e)[:200]}") from e
+    return {"ok": True, "notification_id": r["id"], "message": r["message"],
+            "next_run_time": scheduler.next_run_time()}
+
+
 # ---------- 統計 ----------
 _STATS = text("""
 SELECT route, COUNT(*) AS n, AVG(latency_ms) AS avg_ms,

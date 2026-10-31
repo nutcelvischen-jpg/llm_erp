@@ -144,3 +144,9 @@
   缺料明細：FST-M8x30-HEX 缺 6,650，建議採購 8,565（順發五金，交期 10 天）；GEAR-M2-40T 缺 649，建議採購 762（精密熱處理，交期 28 天）；BRG-6204-2RS 缺 466，建議採購 585（永信金屬，交期 21 天）
   ```
 - 驗收：`make test` 337 passed；`make test-llm` 25 passed（訊息含 BRG-6205-2RS 與 GEAR-M2-40T、摘要 ≤150 字）。
+
+## T28 排程器 ✅
+- `backend/app/jobs/scheduler.py`：`BackgroundScheduler(timezone=Asia/Taipei)`，每週一 08:00 執行 `dead_stock.run(dry_run=False)`（coalesce、max_instances=1、misfire 寬限 1 小時；失敗只記 log）；`main.py` 改用 `lifespan` 啟動與關閉。新增設定 `SCHEDULER_ENABLED`（預設 true，已加進 `.env.example`）。
+- `POST /admin/jobs/dead_stock/run`：同步執行並回 `{ok, notification_id, message, next_run_time}`；執行中再觸發 409，失敗 503。
+- 驗收（另開 `uvicorn --port 8011`，不動你的 `make dev`）：啟動 log `排程器啟動：dead_stock_weekly 下次執行 2026-11-02T08:00:00+08:00`；手動觸發前 `app.notifications` 0 列 → 後 1 列（id 1，channel console，sent false）；關閉時 log `排程器已關閉`。`make test` 344 passed。
+- 注意：`make dev` 用 `--reload` 也會啟動排程器；若同時開多個後端程序，每個都會在週一 08:00 各跑一次（PoC 只開一個即可）。
