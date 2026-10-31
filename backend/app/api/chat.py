@@ -25,10 +25,17 @@ class Turn(BaseModel):
         return v.strip()[:MAX_HISTORY_CHARS]
 
 
+class Choice(BaseModel):
+    """使用者在「確認既定程式」畫面點選的程式；後端會重新驗證模板與參數。"""
+    template_id: str = Field(max_length=64)
+    params: dict = Field(default_factory=dict)
+
+
 class ChatRequest(BaseModel):
     question: str
     session_id: str | None = Field(default=None, max_length=64)
     history: list[Turn] = Field(default_factory=list)
+    choice: Choice | None = None
 
     @field_validator("question")
     @classmethod
@@ -54,7 +61,8 @@ class FeedbackRequest(BaseModel):
 def chat(req: ChatRequest) -> dict:
     """同步端點（FastAPI 會放進 threadpool，不會卡住其他請求）。
     查詢失敗不是伺服器錯誤：一律回 HTTP 200，失敗原因放在 `error`。"""
-    r = graph.run_agent(req.question, [t.model_dump() for t in req.history], req.session_id)
+    choice = req.choice.model_dump() if req.choice else None
+    r = graph.run_agent(req.question, [t.model_dump() for t in req.history], req.session_id, choice=choice)
     return {
         "question": req.question,
         "route": r.route,
@@ -68,6 +76,16 @@ def chat(req: ChatRequest) -> dict:
         "row_count": r.row_count,
         "attempts": r.attempts,
         "sources": r.sources,
+        "mode": r.mode,
+        "template_id": r.template_id,
+        "template_title": r.template_title,
+        "params_readable": r.params_readable,
+        "binds": r.binds,
+        "answer_source": r.answer_source,
+        "options": r.options,
+        "proposals": r.proposals,
+        "suggestions": r.suggestions,
+        "notes": r.notes,
         "warning": r.warning,
         "error": r.error,
         "audit_id": r.audit_id,

@@ -47,9 +47,10 @@ make dev                   # http://localhost:8000
 curl -s localhost:8000/health        # "ok": true，且沒有 warnings
 make test                            # 單元測試（約 2 秒）
 make test-db && make test-llm        # 需要 Docker 與 LM Studio
-make eval-sql                        # Text-to-SQL 30 題黃金題（門檻 80%）
+make eval-sql                        # 數字查詢 30 題黃金題（既定程式；--engine ai 可比較 AI 寫 SQL）
+make eval-intent                     # 意圖辨識 40 題（模板 ≥95%、參數 ≥90%、不支援誤判 0）
 make eval-rag                        # RAG 30 題（命中 ≥85%、答案 ≥80%、拒答全對）
-uv run --with playwright python scripts/check_frontend.py   # 網頁 85 項瀏覽器檢查
+uv run --with playwright python scripts/check_frontend.py   # 網頁 102 項瀏覽器檢查
 ```
 
 ---
@@ -63,8 +64,10 @@ uv run --with playwright python scripts/check_frontend.py   # 網頁 85 項瀏�
             ▼
         agent.run_agent
           ├─ router：LLM 分類 sql / docs / both / chat ＋ 關鍵字保底；依對話改寫問題
-          ├─ sql  ─▶ text2sql：few-shot → LLM 產生 SQL → sql_guard（只准 SELECT 4 個 View）
-          │          → 唯讀帳號 llm_reader 執行（10 秒逾時）→ LLM 寫結論（數字檢查）
+          ├─ sql  ─▶ catalog（既定程式）：LLM 辨識「模板＋參數」→ 程式驗證參數（期間、名稱比對、白名單）
+          │          → 寫死的參數化 SQL（必經 sql_guard）→ 唯讀帳號 llm_reader 執行（10 秒逾時）
+          │          → LLM 看結果與程式算的 facts 寫結論（數字檢查，不過就用固定句型）
+          │          沒有明確命中 → 列出最接近的既定程式讓使用者確認；不支援 → 婉拒並記錄
           ├─ docs ─▶ Qdrant 混合檢索（bge-m3 dense ＋ jieba BM25 → RRF）→ reranker（CPU）
           │          → LLM 依片段回答並標 [來源 n]
           ├─ both ─▶ 兩支並行 → 合併結論（數字檢查）
@@ -86,8 +89,8 @@ Qdrant :6333（Docker）     collection erp_docs：dense 1024 維 ＋ sparse bm2
 
 | 項目 | 現況 |
 |---|---|
-| 數字查詢由 AI 寫 SQL | 規格的「模板優先」（T14b–T14f）尚未實作；目前由 LLM 產生 SQL，經守門員與唯讀帳號執行，畫面一律標示「AI 即時產生，請查核」。黃金題 30/30，但措辭差很多的問題仍可能查錯。 |
-| 數字檢查 | 只確認回覆中的數字出現在結果或程式算出的合計中，**無法確認數字對應到正確欄位或正負號**（例：把缺口說成建議量）。已用「欄位=值」格式降低此風險，但不是保證。 |
+| 數字查詢範圍 | 只能回答 16 個既定程式涵蓋的問題（`backend/app/catalog/templates/`）；其他問題會列出最接近的程式讓使用者確認，或婉拒並記錄到 `app.unmatched_questions`，需由人新增模板。AI 不寫 SQL（`text2sql` 只保留給 `eval_text2sql.py --engine ai` 比較）。 |
+| 數字檢查 | 確認回覆中的每個數字出現在結果、程式算出的 facts 或查詢條件中，**無法確認數字對應到正確欄位或正負號**（例：把缺口說成建議量）。已用「欄位=值」格式降低此風險，但不是保證；檢查不過就改用固定句型。 |
 | 文件回答 | 嚴格字串比對的正確率 88–92%，失敗多為「答對但沒照抄原文」。只支援有文字層的 PDF（Docling 關閉 OCR，掃描檔不行）。 |
 | 路由 | 含「幾／多少」的純文件問題會被升為 both，多查一次 SQL（約 +2 秒，不影響答案）。 |
 | 權限 | 沒有登入、沒有使用者權限；`/admin/*` 無驗證。`make dev` 只綁 127.0.0.1，對外開放前必須先加驗證。 |
@@ -117,6 +120,6 @@ Qdrant :6333（Docker）     collection erp_docs：dense 1024 維 ＋ sparse bm2
    - 客戶 ERP 是 SQL Server／Oracle 等：建議以 ETL／CDC 每晚同步到本機 Postgres 的 `erp` schema（守門員以 PostgreSQL 語法解析，直接連其他資料庫需改 `sql_guard` 的方言）。
 2. **欄位對照**：每個 View 輸出相同的中文欄位名與意義（例如「銷售金額」是否含稅、「取消」單如何排除）。對照不清楚的地方寫進 `sql/schema_doc.md`，它會原封不動放進 prompt。
 3. **權限**：建立只對 4 個 View 有 SELECT 權限的唯讀帳號（參考 `sql/003_views.sql` 的 `llm_reader`），不要給原始表權限。
-4. **範例與黃金題**：依客戶的常見問題改寫 `data/seed/sql_examples.yaml`（每句先在資料庫跑過）→ `make load-examples`；改寫 `data/golden/text2sql.yaml` 的參考 SQL → `make eval-sql` 達標才上線。
+4. **既定程式與黃金題**：依客戶的常見問題調整或新增 `backend/app/catalog/templates/` 的模板（SQL 寫死、值用綁定參數、每個模板 ≥5 句範例說法），定期把 `app.unmatched_questions` 裡常見的問題做成新模板；改寫 `data/golden/text2sql.yaml`、`intents.yaml`、`template_map.yaml` → `make eval-sql`、`make eval-intent` 達標才上線。
 5. **文件**：把客戶的合約、SOP、規章 PDF 放進資料夾 → `uv run python scripts/ingest_docs.py <資料夾>`（或 `POST /admin/ingest`，路徑須在 `data/` 底下）；依客戶文件出 RAG 黃金題 → `make eval-rag`。
 6. **預警規則**：`backend/app/jobs/dead_stock.py` 的呆滯天數（180）、缺料與建議採購量公式依客戶的採購政策調整。

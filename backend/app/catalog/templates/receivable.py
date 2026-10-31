@@ -33,7 +33,7 @@ def _sum_summary(f):
 
 ar_summary = QueryTemplate(
     id="ar_summary", title="應收合計",
-    description="未收帳款合計（金額、張數、客戶數、最長逾期天數）；可限定客戶，或只看已逾期／逾期超過 N 天",
+    description="未收帳款的合計數字（未收總額、發票張數、客戶數、最長逾期天數）；可限定客戶。問題提到「逾期」時要填 overdue_gt：已逾期＝0、逾期超過 30 天＝30；沒提到逾期則不填（全部未收）。問「多少錢」「幾張」用這個",
     examples=["目前總共有多少應收帳款沒收回來", "逾期超過 30 天的應收總共多少", "台陽科技目前欠我們多少錢",
               "精興金屬有幾張逾期發票", "現在逾期未收的金額合計", "應收帳款總額是多少"],
     params=[ParamSpec("customer", "entity", "客戶", entity="customer"), OVERDUE_PARAM],
@@ -46,7 +46,7 @@ ar_summary = QueryTemplate(
 def _by_build(p):
     sql = (f'SELECT "客戶名稱", COUNT(*) AS "未收張數", ROUND(SUM("未收金額"), 0) AS "未收金額", '
            f'MAX("逾期天數") AS "最長逾期天數" FROM {V} WHERE {UNPAID} AND {OVERDUE} '
-           f'GROUP BY 1 ORDER BY 3 {DIR[p["order"]]}, 1 LIMIT {top(p)}')
+           f'GROUP BY 1 ORDER BY 3 {DIR[p["order"]]}, 1 LIMIT {top(p, default=100, hi=100)}')
     return guarded(sql, {"overdue_gt": p.get("overdue_gt")})
 
 
@@ -64,10 +64,10 @@ def _by_summary(f):
 
 ar_by_customer = QueryTemplate(
     id="ar_by_customer", title="欠款客戶清單",
-    description="【應收帳款】依未收金額排出欠款客戶（可只看已逾期或逾期超過 N 天），含張數、未收金額、最長逾期天數",
+    description="【應收帳款】列出全部欠款客戶（或只取前 N 名），依未收金額排序，含張數、未收金額、最長逾期天數。問題提到「逾期」時要填 overdue_gt：已逾期＝0、逾期超過 60 天＝60；沒提到逾期則不填",
     examples=["哪些客戶有逾期未收的發票", "哪些客戶的應收逾期超過 60 天", "欠最多錢的前十個客戶",
               "逾期超過 90 天的客戶有誰", "哪個客戶欠款最多", "目前有欠款的客戶清單", "未收款金額排名前幾的客戶"],
-    params=[OVERDUE_PARAM, ParamSpec("top_n", "int", "筆數", default=10, min=1, max=100),
+    params=[OVERDUE_PARAM, ParamSpec("top_n", "int", "筆數", default=100, min=1, max=100),   # 清單：預設全部列出
             ParamSpec("order", "enum", "排序", default="desc", choices=ORDER_CHOICES)],
     build=_by_build, facts=_by_facts, summary=_by_summary,
     columns=lambda p: ["客戶名稱", "未收張數", "未收金額", "最長逾期天數"],
@@ -95,7 +95,7 @@ def _inv_summary(f):
 
 ar_invoices = QueryTemplate(
     id="ar_invoices", title="客戶逾期發票明細",
-    description="某一個客戶的逾期（或逾期超過 N 天）未收發票明細",
+    description="某一個客戶的逾期未收發票「逐張明細」（發票號碼、日期、金額）。只問張數或金額合計時請用應收合計",
     examples=["台陽科技有哪些發票逾期", "列出鴻遠機械逾期的發票", "精興金屬逾期超過 30 天的發票明細",
               "台陽科技欠款明細", "這個客戶哪幾張發票還沒付"],
     params=[ParamSpec("customer", "entity", "客戶", required=True, entity="customer"),

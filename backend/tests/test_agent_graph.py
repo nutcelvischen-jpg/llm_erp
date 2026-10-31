@@ -1,24 +1,30 @@
 import pytest
 
-from backend.app.agent.graph import AI_SQL_WARNING, Deps, md_table, run_agent
+from backend.app.agent.graph import Deps, md_table, run_agent
 from backend.app.agent.router import Route
+from backend.app.catalog.runner import CatalogAnswer
 from backend.app.llm import ChatResult
 from backend.app.rag.answer import RagAnswer, Source
-from backend.app.text2sql import SqlAnswer
 
-SQL_OK = SqlAnswer(sql='SELECT "客戶名稱", 營收 FROM v LIMIT 3', explanation="今年營收最高的 3 個客戶",
-                   columns=["客戶名稱", "營收"], rows=[["鴻遠機械", 12000000], ["台陽科技", 9000000],
-                                                       ["華發|實業", None]], row_count=3, attempts=1)
+SQL_OK = CatalogAnswer("template", "sales_rank", "銷售排名", ["排名對象：客戶", "期間：2026 年（今年）"],
+                       ["客戶名稱", "營收"], [["鴻遠機械", 12000000], ["台陽科技", 9000000], ["華發|實業", None]], 3,
+                       'SELECT "客戶名稱" FROM "v_銷售明細" WHERE "訂單日期" >= :date_from LIMIT 3',
+                       {"date_from": "2026-01-01"}, "今年營收第一名是鴻遠機械，12,000,000 元。", "llm")
 RAG_OK = RagAnswer("- 每逾一日 0.3%，上限 10% [來源 1]",
                    [Source("銷售合約_鴻遠機械.pdf", 2, "第五條", "每逾一日…")], 50, 10, 300)
+CONFIRM = CatalogAnswer("confirm", answer="找不到完全符合的既定查詢。", proposals=[
+    {"template_id": "sales_rank", "title": "銷售排名", "description": "d", "params": {"dimension": "客戶"},
+     "params_readable": ["排名對象：客戶"], "columns": ["客戶名稱", "營收"], "notes": []}])
 
 
 def make(kind, sql=SQL_OK, rag=RAG_OK, chat_text="綜合結論", audits=None, rewritten=None, **kw):
     audits = [] if audits is None else audits
-    calls = {"sql": [], "docs": [], "chat": []}
+    calls = {"sql": [], "docs": [], "chat": [], "choice": []}
 
-    def sql_fn(q):
+    def sql_fn(q, choice=None, data_part_only=False):
         calls["sql"].append(q)
+        calls["choice"].append(choice)
+        calls.setdefault("data_part_only", []).append(data_part_only)
         if isinstance(sql, Exception):
             raise sql
         return sql
@@ -33,33 +39,51 @@ def make(kind, sql=SQL_OK, rag=RAG_OK, chat_text="綜合結論", audits=None, re
     return deps, calls, audits
 
 
-def test_sql_route_builds_table_sql_and_warning():
+def test_sql_route_shows_template_badge_table_sql_and_binds():
     deps, calls, audits = make("sql")
     r = run_agent("今年營收最高的三個客戶", None, "s1", deps)
-    assert r.route == "sql" and r.row_count == 3 and r.warning == AI_SQL_WARNING
+    assert r.route == "sql" and r.mode == "template" and r.template_id == "sales_rank" and r.row_count == 3
+    assert r.answer == SQL_OK.answer and r.answer_source == "llm" and r.warning is None
+    assert r.params_readable == SQL_OK.params_readable and r.binds == {"date_from": "2026-01-01"}
+    assert "**數據**（標準查詢：銷售排名｜排名對象：客戶｜期間：2026 年（今年））" in r.markdown
     assert "| 鴻遠機械 | 12,000,000 |" in r.markdown and "華發\\|實業" in r.markdown and "| - |" in r.markdown
-    assert "<details><summary>查詢的 SQL</summary>" in r.markdown and AI_SQL_WARNING in r.markdown
-    assert calls["docs"] == [] and r.audit_id == 42
+    assert "-- :date_from = '2026-01-01'" in r.markdown and "AI 即時產生" not in r.markdown
+    assert calls["docs"] == [] and calls["chat"] == [] and r.audit_id == 42
     a = audits[0]
     assert (a.route, a.session_id, a.sql_ok, a.sql_rows, a.error) == ("sql", "s1", True, 3, None)
+    assert "-- template: sales_rank" in a.sql_text
 
 
-def test_sql_explanation_with_unsupported_number_uses_fixed_sentence():
-    bad = SqlAnswer(sql="SELECT 1", explanation="營收成長 37%", columns=["x"], rows=[[1]], row_count=1)
-    r = run_agent("q", deps=make("sql", sql=bad, chat_text="營收成長 88%")[0])
-    assert r.answer == "查詢結果如下表（共 1 列）。"
+def test_sql_confirm_lists_programs_without_failure():
+    deps, _, audits = make("sql", sql=CONFIRM)
+    r = run_agent("今年哪個客戶平均訂單最大", deps=deps)
+    assert r.mode == "confirm" and r.error is None and r.rows == [] and r.sql == ""
+    assert r.proposals[0]["template_id"] == "sales_rank" and "1. **銷售排名**：排名對象：客戶" in r.markdown
+    assert "查詢失敗" not in r.markdown and audits[0].sql_ok is None
 
 
-def test_sql_summary_used_when_numbers_supported():
-    deps, calls, _ = make("sql", chat_text="今年營收最高的是鴻遠機械，營收 12,000,000 元。")
-    r = run_agent("今年營收最高的三個客戶", deps=deps)
-    assert r.answer == "今年營收最高的是鴻遠機械，營收 12,000,000 元。"
-    assert "第 1 列：客戶名稱=鴻遠機械；營收=12000000" in calls["chat"][0][1]["content"]
+def test_sql_clarify_and_no_match():
+    deps, _, _ = make("sql", sql=CatalogAnswer("clarify", answer="「華發」對應到多個客戶，請問是哪一個？",
+                                                options=["華發實業", "華發精密"]))
+    r = run_agent("華發營收", deps=deps)
+    assert r.mode == "clarify" and r.options == ["華發實業", "華發精密"] and "可選：華發實業、華發精密" in r.markdown
+    deps, _, _ = make("sql", sql=CatalogAnswer("no_match", answer="這類問題目前沒有對應的既定查詢",
+                                                suggestions=["今年營收前五名的客戶"]))
+    r = run_agent("員工薪資", deps=deps)
+    assert r.mode == "no_match" and r.error is None and "可以這樣問：今年營收前五名的客戶" in r.markdown
 
 
-def test_sql_summary_with_invented_number_keeps_explanation():
-    deps, _, _ = make("sql", chat_text="鴻遠機械營收 1,300 萬元。")
-    assert run_agent("今年營收最高的三個客戶", deps=deps).answer == "今年營收最高的 3 個客戶"
+def test_choice_skips_routing_and_runs_program():
+    deps, calls, _ = make("docs")
+    r = run_agent("今年哪個客戶平均訂單最大", deps=deps, choice={"template_id": "sales_rank", "params": {}})
+    assert r.route == "sql" and r.mode == "template" and calls["docs"] == []
+    assert calls["choice"] == [{"template_id": "sales_rank", "params": {}}]
+
+
+def test_sql_execution_error_is_reported():
+    deps, _, audits = make("sql", sql=CatalogAnswer("error", "sales_rank", "銷售排名", error="查詢失敗：逾時"))
+    r = run_agent("q", deps=deps)
+    assert r.mode == "error" and "> 這部分查詢失敗：查詢失敗：逾時" in r.markdown and audits[0].sql_ok is False
 
 
 def test_docs_route_has_sources_and_no_table():
@@ -75,22 +99,31 @@ def test_both_runs_both_and_merges_with_number_check():
     deps, calls, _ = make("both", chat_text="鴻遠機械營收 12,000,000 元；違約金 0.3% [來源 1]")
     r = run_agent("q", deps=deps)
     assert calls["sql"] and calls["docs"] and r.answer.startswith("鴻遠機械營收 12,000,000")
-    assert "**數據**" in r.markdown and "**來源**" in r.markdown
+    assert "**數據**（標準查詢：銷售排名" in r.markdown and "**來源**" in r.markdown and r.mode == "template"
+    assert calls["data_part_only"] == [True]   # both：意圖辨識只看數字的部分
     assert r.tokens == {"prompt": 57, "completion": 13}
+
+
+def test_both_uses_split_parts_from_router():
+    deps, calls, _ = make("both")
+    deps.route = lambda q, h: Route("both", q, "llm", "台陽逾期多少？", "台陽合約逾期多久可暫停出貨？")
+    run_agent("台陽逾期多少？依合約多久可暫停出貨？", deps=deps)
+    assert calls["sql"] == ["台陽逾期多少？"] and calls["data_part_only"] == [False]
+    assert calls["docs"] == ["台陽合約逾期多久可暫停出貨？"]
 
 
 def test_both_merge_with_invented_number_falls_back():
     deps, _, _ = make("both", chat_text="營收成長 99%")
     r = run_agent("q", deps=deps)
-    assert "99" not in r.answer and r.answer.startswith("今年營收最高的 3 個客戶") and "0.3%" in r.answer
+    assert "99" not in r.answer and r.answer.startswith(SQL_OK.answer) and "0.3%" in r.answer
 
 
 def test_both_sql_not_applicable_is_silent():
-    na = SqlAnswer(error="這個問題無法用目前的 ERP 資料回答：資料中沒有特休")
-    deps, calls, _ = make("both", sql=na)
-    r = run_agent("特休幾天", deps=deps)
-    assert r.answer == RAG_OK.text and "查詢失敗" not in r.markdown and r.error is None
-    assert calls["chat"] == []
+    for na in (CatalogAnswer("no_match", answer="沒有對應的既定查詢"), CONFIRM):
+        deps, calls, _ = make("both", sql=na)
+        r = run_agent("特休幾天", deps=deps)
+        assert r.answer == RAG_OK.text and "查詢失敗" not in r.markdown and r.error is None
+        assert calls["chat"] == [] and r.mode is None and r.proposals == []
 
 
 def test_branch_failure_reported_not_raised():
@@ -160,29 +193,3 @@ def test_real_three_demo_questions():
         assert r.markdown and r.route == kind and r.audit_id
     with engine.connect() as c:
         assert c.execute(text("SELECT count(*) FROM app.audit_log")).scalar() == before + 3
-
-
-def test_column_totals():
-    from backend.app.agent.graph import column_totals
-
-    cols = ["料號", "庫存金額", "未異動天數", "毛利率(%)", "數量"]
-    rows = [["A", 100.5, 200, 25.1, 3], ["B", 50, 190, 20.0, 4]]
-    assert column_totals(cols, rows, 2) == {"庫存金額": 150.5, "數量": 7}
-    assert column_totals(cols, rows, 300) == {}  # 結果被截斷時不加總
-    assert column_totals(cols, rows[:1], 1) == {}
-
-
-def test_sql_summary_may_cite_program_totals():
-    sql = SqlAnswer(sql="SELECT 1", explanation="呆滯料號", columns=["料號", "庫存金額"],
-                    rows=[["A", 1000], ["B", 2500]], row_count=2)
-    deps, calls, _ = make("sql", sql=sql, chat_text="2 個料號合計壓了 3,500 元。")
-    assert run_agent("壓了多少錢", deps=deps).answer == "2 個料號合計壓了 3,500 元。"
-    assert "庫存金額合計=3,500" in calls["chat"][0][1]["content"]
-
-
-def test_totals_keep_all_digits():
-    sql = SqlAnswer(sql="SELECT 1", explanation="x", columns=["料號", "庫存金額"],
-                    rows=[["A", 2044440], ["B", 1408176]], row_count=2)
-    deps, calls, _ = make("sql", sql=sql, chat_text="ok")
-    run_agent("q", deps=deps)
-    assert "庫存金額合計=3,452,616" in calls["chat"][0][1]["content"]

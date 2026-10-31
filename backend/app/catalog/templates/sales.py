@@ -66,7 +66,7 @@ def _rank_summary(f):
 
 sales_rank = QueryTemplate(
     id="sales_rank", title="銷售排名",
-    description="【銷售】依客戶／產品／料號／產品類別／業務／區域，排出營收、毛利、毛利率、數量、訂單數或營收占比的前幾名（或後幾名）。不含應收帳款（欠款、未收）",
+    description="【銷售】依客戶／產品／料號／產品類別／業務／區域分組，列出各組的營收、毛利、毛利率、數量、訂單數或營收占比（例如「各產品類別的毛利率」），並排出前幾名（或後幾名）。不含應收帳款（欠款、未收）",
     examples=["今年營收前五名的客戶", "哪個業務今年業績最好", "今年賣最多的三個料號", "各產品類別的毛利率排名",
               "毛利最低的五個客戶是誰", "各區域營收占比", "去年哪個產品賣得最好", "本月訂單最多的客戶"],
     params=[ParamSpec("dimension", "enum", "排名對象", default="客戶", choices={k: v for k, v in DIM_CHOICES.items()}),
@@ -156,8 +156,8 @@ sales_trend = QueryTemplate(
     description="每月或每季的營收、毛利、毛利率走勢；也可以找出營收最高或最低的月份／季度；可限定客戶",
     examples=["最近 6 個月每個月的營收", "今年哪個月營收最高", "近兩年每一季的毛利率走勢", "鴻遠機械每個月的訂單金額",
               "營收最差的是哪個月", "去年各月份業績", "最近一年營收趨勢"],
-    params=[ParamSpec("grain", "enum", "時間單位", default="月", choices={"月": ["每月", "月份", "按月"],
-                                                                     "季": ["每季", "季度", "按季"]}),
+    params=[ParamSpec("grain", "enum", "時間單位", default="月", choices={"月": ["每月", "月份", "按月", "month", "monthly"],
+                                                                     "季": ["每季", "季度", "按季", "quarter", "quarterly"]}),
             ParamSpec("period", "period", "期間", default="last_n_months:6"),
             ParamSpec("customer", "entity", "客戶", entity="customer"),
             ParamSpec("order", "enum", "排序", default="time",

@@ -260,3 +260,26 @@
 - `numbers_supported(text, rows, facts, context, max_rank)`：比 T23 的 numcheck 嚴格，**不再無條件放行 ≤31 的整數**；年份／月／日必須來自查詢條件（期間說明）或結果中的日期；名次序數不得超過結果列數或筆數；容許千分位、依小數位四捨五入、萬／億換算、負數以絕對值比對。檢查不過、LLM 失敗或空回覆 → 模板的 `summary()`（`source="fixed"`）；沒有結果列時不呼叫 LLM。
 - 測試 `backend/tests/test_catalog_answer.py`：擷取邊界（`1,234.5`、`12.3%`、`1,198 萬`、中文數字不算）、支援／不支援、年份與名次只能來自條件、負數、日期、prompt 內容、LLM 回覆採用／退回、16 個模板的固定句型；真實 LLM 3 個模板（營收排名、呆滯明細、缺料）的回覆都通過數字檢查（source=llm）。
 - 驗收：`make test` 481 passed；`make test-llm` 全過。
+
+## T14f 整合：answer_question、Agent、API、網頁、評估 ✅
+- `backend/app/catalog/runner.py`：`answer_question(question, today, choice, data_part_only) -> CatalogAnswer(mode, template_id, template_title, params_readable, columns, rows, row_count, sql, binds, answer, answer_source, options, proposals, suggestions, notes, error, latency_ms)`。執行用 `engine_ro`、綁定參數、逾時 10 秒；`choice`（使用者在確認畫面點選的程式）一律經 `intent.confirm()` 重新驗證。
+- **與 TASKS.md 的差異（依 Elvis 決定）**：沒有 `ALLOW_AI_FALLBACK`，AI 不寫 SQL；未命中時不是只給 3 個範例問題，而是 `confirm` 列出最接近的既定程式（參數、結果欄位、改用預設的提醒）讓使用者點選執行，明顯不支援的才 `no_match`（附 3 個可改問的範例）。
+- Agent（`agent/graph.py`）：sql 分支改呼叫 `answer_question`，移除 T23／T30 的 text2sql 結論與欄位加總（改由模板 facts 與 T14e 回覆處理）；`run_agent(..., choice=)` 有 choice 時不路由直接執行；clarify／confirm／no_match 是正常回覆，不算失敗；Markdown 顯示「標準查詢：模板｜參數」與綁定參數；稽核 `sql_text` 附 template 與 binds。
+- **路由 both 時拆句**：router 多輸出 `sql_part`／`docs_part`（T22 prompt 補規則）。原因：整句「台陽科技逾期的應收有多少？依合約逾期多久可以暫停出貨？」交給意圖辨識時，LLM 會因為後半是合約問題而判 unsure；拆開後連續 3 次都穩定命中 `ar_summary`。沒拆出時退回整句＋「只判斷數字部分」的提示。
+- API：`POST /api/chat` 新增 body `choice: {template_id, params}`；回傳新增 `mode`、`template_id`、`template_title`、`params_readable`、`binds`、`answer_source`、`options`、`proposals`、`suggestions`、`notes`（舊欄位保留；`warning` 不再出現）。
+- 網頁：標準查詢徽章與參數標籤（卡片與右側面板）、名稱替換提示、SQL 區塊附綁定參數、確認模式的候選卡片（說明、參數、⚠ 提醒、結果欄位、「執行這個」、「都不是」→ 顯示已記錄）、反問選項以「原問題（指：選項）」重送、未命中的建議問題可點選；頁尾改為「數字由公司既定的查詢程式在唯讀資料庫查得」。`check_frontend.py` 新增 17 項（共 102 項全過，含候選內容的 XSS）。
+- `scripts/eval_text2sql.py --engine template|ai`（預設 template；template 模式婉拒題必須是 no_match；報告 `report_text2sql_<日期>_<engine>.md`）。
+- 為達標做的調整（都沒改黃金題）：
+  1. Q17／Q18：描述寫明「問題提到逾期時要填 overdue_gt（已逾期＝0）」；`ar_invoices` 描述標明只在要逐張明細時用。
+  2. Q18：欠款客戶清單預設改為全部列出（上限 100），問「前 N 名」才截斷。
+  3. Q07：銷售排名描述補上「各產品類別的毛利率」這類分組統計。
+  4. Q09：LLM 填英文 `month` 被判為不支援的值而轉 confirm（降級保護生效）→ 時間單位補英文同義詞。
+  5. Demo 第 4 題偶爾在「呆滯明細」與「呆滯合計」間猶豫 → 描述區分「明細（含合計）」與「只問合計」，prompt 補「同時問哪些與合計多少時選明細程式」；之後 8/8 命中明細。
+  6. 參數標籤「逾期超過天數：0」改顯示「已逾期」。
+- **驗收**：
+  - `make eval-sql`（template）連續多次 **30/30**：資料型 **26/26 = 100%**（門檻 95%）、婉拒題 **4/4 皆 no_match**；平均 1.6–2.7 秒。
+  - `--engine ai` 對照：30/30，平均 2.0 秒、P95 3.1 秒、平均嘗試 1.00 次。兩者正確率相同；模板的優勢是 SQL 固定可審計、參數可見、不支援的問題不會被硬查。
+  - `make eval-intent`：模板 32/32、參數 32/32、不支援誤判 0/8。
+  - `make test` 490 passed、`make test-db` 93 passed、`make test-llm` 34 passed、前端 102 項通過。
+  - 真實瀏覽器 Demo 6 題全部正確（6.9／4.4／10.4／4.3／3.8／5.3 秒）；「各業務員今年的毛利率跟去年比」→ 確認模式 → 點「執行這個」→ 同期比較結果。截圖更新於 `docs/screenshots/`（`demo_1~6.png`、`confirm.png`、`confirm_run.png`）。
+- 文件：`AGENTS.md` 新增「實作現況：模板優先」段（未動固定參數）；README、SPEC 第 7 節、`docs/DEMO_SCRIPT.md`（徽章說明、加演確認模式、備援）同步更新。

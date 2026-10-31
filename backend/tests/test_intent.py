@@ -164,6 +164,20 @@ def test_confirm_revalidates_client_params():
     assert I.confirm("ar_invoices", {}, TODAY, ENT).kind == "clarify"
 
 
+def test_overdue_readable():
+    t = TEMPLATES["ar_summary"]
+    assert I.readable(t, {"customer": "台陽科技", "overdue_gt": 0}, TODAY) == ["客戶：台陽科技", "已逾期"]
+    assert I.readable(t, {"overdue_gt": 60}, TODAY) == ["逾期超過 60 天"]
+
+
+def test_data_part_only_adds_note_to_prompt():
+    _, _, calls = rec("q", llm_out={"status": "unsupported"})
+    assert "文件系統另外回答" not in calls[0][0]["content"]
+    d, _, calls = deps(llm_out={"status": "unsupported"})
+    I.recognize("台陽逾期多少？依合約多久可暫停出貨？", TODAY, d, data_part_only=True)
+    assert "文件系統另外回答" in calls[0][0]["content"]
+
+
 def test_catalog_prompt_lists_param_specs():
     text = I.format_catalog(["sales_rank", "stock_lookup"])
     assert "dimension（排名對象，標準值：客戶／產品／料號／產品類別／業務／區域，預設 客戶）" in text

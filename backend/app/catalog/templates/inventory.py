@@ -31,7 +31,7 @@ def _dead_summary(f):
 
 stock_dead = QueryTemplate(
     id="stock_dead", title="呆滯庫存明細",
-    description="超過 N 天（預設 180 天）沒有異動且仍有庫存的料號明細，含庫存金額",
+    description="超過 N 天（預設 180 天）沒有異動且仍有庫存的料號「明細」，含各料號庫存金額，並提供金額合計。問「哪些料號」（即使同時問合計）用這個",
     examples=["哪些料號超過 180 天沒有異動", "呆滯庫存有哪些料號", "列出半年沒動的庫存", "超過一年沒出貨的料號",
               "哪些庫存放著不動", "呆料清單"],
     params=[IDLE, ParamSpec("top_n", "int", "筆數", default=50, min=1, max=200)],
@@ -54,7 +54,7 @@ def _dead_total_summary(f):
 
 stock_dead_total = QueryTemplate(
     id="stock_dead_total", title="呆滯庫存合計",
-    description="呆滯（超過 N 天未異動）料號的數量與庫存金額合計",
+    description="呆滯（超過 N 天未異動）料號的數量與庫存金額「合計」，不列出料號。只問總數或總金額時用這個；問「哪些料號」請用呆滯庫存明細",
     examples=["呆滯庫存一共壓了多少錢", "呆料總金額", "有幾個料號是呆滯的", "半年沒動的庫存值多少錢", "呆滯庫存金額合計"],
     params=[IDLE],
     build=_dead_total_build, facts=lambda c, r: first(c, r), summary=_dead_total_summary,

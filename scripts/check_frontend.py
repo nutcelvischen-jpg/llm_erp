@@ -390,6 +390,97 @@ with sync_playwright() as p:
     check(evil in page.locator(".sources li").first.inner_text(), "來源原樣顯示為文字")
     page.close()
 
+    # ================= T14f：既定程式（標準查詢徽章、確認候選、反問、未命中）=================
+    TPL = answer(route="sql", mode="template", template_id="sales_rank", template_title="銷售排名",
+                 params_readable=["排名對象：客戶", "期間：2026 年（今年）", "筆數：3"], answer="今年營收第一名是華發實業。",
+                 sql='SELECT "客戶名稱" FROM "v_銷售明細" WHERE "訂單日期" >= :date_from LIMIT 3',
+                 binds={"date_from": "2026-01-01", "date_to": "2026-11-01"}, columns=["客戶名稱", "營收"],
+                 rows=[["華發實業", 11979390], ["鴻遠機械", 9869353]], row_count=2, notes=["已將「華發」視為「華發實業」"])
+    page = fresh(browser)
+    mock(page, TPL)
+    page.fill("#input", "今年營收前三")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".badge")
+    card = page.locator(".card.answer").last
+    check(card.locator(".badge").inner_text() == "標準查詢：銷售排名", "標準查詢徽章")
+    check(card.locator(".tag").count() == 3 and "期間：2026 年（今年）" in card.locator(".badges").inner_text(), "參數標籤")
+    check("已將「華發」視為「華發實業」" in card.locator(".notes").first.inner_text(), "名稱替換提示")
+    check(card.locator(".warning").count() == 0, "標準查詢不顯示 AI 警示")
+    card.locator("summary", has_text="查詢的 SQL").click()
+    check('-- :date_from = "2026-01-01"' in card.locator("pre").inner_text(), "SQL 區塊列出綁定參數")
+    shot(page, "11_template")
+
+    PROPS = [{"template_id": "sales_rank", "title": "銷售排名", "description": "依客戶排營收",
+              "params": {"dimension": "客戶", "metric": "營收", "top_n": 5}, "params_readable": ["排名對象：客戶", "指標：營收"],
+              "columns": ["客戶名稱", "營收"], "notes": []},
+             {"template_id": "sales_compare", "title": "同期比較", "description": "今年 vs 去年同期",
+              "params": {"metric": "營收", "dimension": "業務"}, "params_readable": ["指標：營收", "比較對象：業務"],
+              "columns": ["對象", "本期營收", "比較期營收", "增減", "增減(%)"], "notes": ["指標不支援「毛利率」，改用「營收」"]}]
+    page.unroute("**/api/chat")
+    reqs = mock(page, answer(route="sql", mode="confirm", answer="找不到完全符合的既定查詢。您是要查下列其中一個嗎？", proposals=PROPS))
+    page.fill("#input", "各業務毛利率跟去年比")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".proposal")
+    card = page.locator(".card.answer").nth(1)   # 固定索引：送出後 .last 會指到新的回答
+    check(card.locator(".proposal").count() == 2 and card.locator("table").count() == 0, "確認模式列出候選、不顯示表格")
+    check("結果欄位：對象、本期營收" in card.locator(".proposal").nth(1).inner_text(), "候選顯示結果欄位")
+    check("⚠ 指標不支援「毛利率」" in card.locator(".proposal .warn").inner_text(), "候選顯示改用預設的提醒")
+    check(card.locator(".error").count() == 0, "確認模式不是錯誤")
+    shot(page, "12_confirm")
+    page.unroute("**/api/chat")
+    reqs = mock(page, TPL)
+    card.locator(".proposal").nth(1).locator(".act").click()
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 3")
+    check(reqs[0]["choice"] == {"template_id": "sales_compare", "params": {"metric": "營收", "dimension": "業務"}}, "點「執行這個」送出 choice 與參數")
+    check(reqs[0]["question"] == "各業務毛利率跟去年比" and page.locator(".msg-user").last.inner_text() == "執行：同期比較", "沿用原問題並顯示執行哪個程式")
+    check(card.locator(".act").first.is_disabled(), "點選後候選按鈕停用")
+
+    page.unroute("**/api/chat")
+    mock(page, answer(route="sql", mode="confirm", answer="找不到完全符合的既定查詢。", proposals=PROPS[:1]))
+    page.fill("#input", "平均訂單金額")
+    page.press("#input", "Enter")
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 4")
+    card = page.locator(".card.answer").last
+    card.locator(".act.ghost", has_text="都不是").click()
+    check("已記錄這個問題" in card.inner_text() and card.locator(".act").first.is_disabled(), "「都不是」顯示已記錄")
+
+    page.unroute("**/api/chat")
+    reqs = mock(page, answer(route="sql", mode="clarify", answer="「華發」對應到多個客戶，請問是哪一個？", options=["華發實業", "華發精密"]))
+    page.fill("#input", "華發今年營收")
+    page.press("#input", "Enter")
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 5")
+    page.unroute("**/api/chat")
+    reqs = mock(page, TPL)
+    page.locator(".card.answer").last.locator(".act", has_text="華發精密").click()
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 6")
+    check(reqs[0]["question"] == "華發今年營收（指：華發精密）" and "choice" not in reqs[0], "反問選項以「原問題（指：選項）」重新送出")
+
+    page.unroute("**/api/chat")
+    mock(page, answer(route="sql", mode="no_match", answer="這類問題目前沒有對應的既定查詢。", suggestions=["今年營收前五名的客戶"]))
+    page.fill("#input", "員工薪水")
+    page.press("#input", "Enter")
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 7")
+    page.unroute("**/api/chat")
+    reqs = mock(page, TPL)
+    page.locator(".card.answer").last.locator(".act", has_text="今年營收前五名的客戶").click()
+    page.wait_for_function("document.querySelectorAll('.card.answer').length >= 8")
+    check(reqs[0]["question"] == "今年營收前五名的客戶", "未命中的建議問題可點選送出")
+    page.close()
+
+    # 確認候選與反問選項的 XSS
+    page = fresh(browser)
+    evil = '<img src=x onerror="window.__xss=11">'
+    mock(page, answer(route="sql", mode="confirm", answer=evil, proposals=[{
+        "template_id": evil, "title": evil, "description": evil, "params": {"x": evil}, "params_readable": [evil],
+        "columns": [evil], "notes": [evil]}]))
+    page.fill("#input", "惡意候選")
+    page.press("#input", "Enter")
+    page.wait_for_selector(".proposal")
+    page.wait_for_timeout(300)
+    check(page.evaluate("window.__xss") is None and page.locator("#thread img").count() == 0, "候選內容的惡意 HTML 不會被執行")
+    check(evil in page.locator(".proposal h4").inner_text(), "候選標題原樣顯示為文字")
+    page.close()
+
     browser.close()
 
 print(f"前端檢查全部通過（{len(passed)} 項）")

@@ -101,3 +101,10 @@ local_llm/
 - **跳過已索引文件**：以 payload `mtime_ns`（整數）判斷；浮點 mtime 經 Qdrant 存取會對不上，勿改回浮點。
 - **容器限制**：代理若在無法連 HuggingFace 的環境執行，Docling／reranker 模型下載會失敗，這類測試標 `db` 或 `llm`，只在有網路的 Mac 上跑。
 - **環境前置**：LM Studio 兩個模型須常駐（`make llm-up`）、Docker 服務須啟動（`make up`）。
+
+## 實作現況：模板優先（T14b–T14f，以此為準）
+- **AI 不寫 SQL**（Elvis 決定）：數字問題只走 `backend/app/catalog/` 的 16 個既定程式；`text2sql.py` 只保留給 `eval_text2sql.py --engine ai` 對照，Agent 不呼叫，也沒有 `ALLOW_AI_FALLBACK`。
+- 意圖結果四種：`template`（直接執行，卡片顯示「標準查詢：…」與參數標籤）、`clarify`（反問）、`confirm`（沒有明確命中或要求的參數值不支援 → 列出最接近的既定程式，使用者點選後以 `choice` 執行，後端重新驗證參數）、`no_match`（婉拒）。confirm／no_match 寫入 `app.unmatched_questions`（`sql/004_catalog.sql`）。
+- 新增模板：寫在 `catalog/templates/`、加進 `registry.py`；SQL 寫死、值用 `:name` 綁定、結構從白名單取、`top_n` 寫成常數、經 `guarded()`；需要 ≥5 句 examples、`facts()`、`summary()`、`columns()`。改完跑 `make test`、`make test-db`（含 `template_map.yaml` 對照）、`make eval-intent`、`make eval-sql`。
+- 路由為 both 時，router 會拆出 `sql_part`／`docs_part`，分別給既定程式與文件檢索。
+

@@ -73,6 +73,21 @@
   .sources li { margin-bottom: 8px; }
   .src-title { font-weight: 600; }
   .fb-status { font-size: 12px; color: var(--muted); }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; align-items: center; }
+  .badge { background: var(--brand); color: #fff; border-radius: 6px; padding: 2px 9px; font-size: 12px; font-weight: 600; }
+  .tag { background: var(--brand-soft); color: var(--brand); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .notes { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }
+  .choices { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .proposal { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fbfcfe; }
+  .proposal h4 { margin: 0 0 4px; font-size: 14px; color: var(--brand); }
+  .proposal .desc { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+  .proposal .cols { margin: 6px 0 8px; font-size: 12px; color: var(--muted); }
+  .proposal .warn { margin: 0 0 8px; font-size: 12px; color: #7a5a00; }
+  .act { border: 1px solid var(--brand); background: var(--brand); color: #fff; border-radius: 8px; padding: 5px 14px;
+    font-size: 13px; font-weight: 600; cursor: pointer; }
+  .act.ghost { background: #fff; color: var(--brand); }
+  .act:disabled { opacity: .5; cursor: not-allowed; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
   .src-snippet { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
   .empty { color: var(--muted); margin: 0; }
   .hintline { margin: 8px 2px 0; font-size: 13px; color: var(--brand); }
@@ -144,7 +159,7 @@
         <textarea id="input" rows="1" placeholder="輸入問題，例如：今年營收最高的三個客戶" aria-label="輸入問題"></textarea>
         <button id="send" type="submit" aria-label="送出問題">送出</button>
       </form>
-      <p class="hint">查詢由 AI 產生 SQL，並在唯讀資料庫執行；重要決策請以展開的 SQL 與原始資料為準。</p>
+      <p class="hint">數字由公司既定的查詢程式在唯讀資料庫查得；重要決策請以展開的 SQL 與原始資料為準。</p>
     </footer>
   </section>
   <aside class="panel" id="panel" aria-label="分析結果"></aside>
@@ -307,6 +322,11 @@ function drawChart(div, spec) {
   liveCharts.push(chart);
 }
 
+function sqlWithBinds(d) {   // SQL 只含 :name 參數；把綁定的值列在下方，方便核對
+  const binds = Object.entries(d.binds || {}).map(([k, v]) => `-- :${k} = ${JSON.stringify(v)}`);
+  return binds.length ? `${d.sql}\n${binds.join("\n")}` : d.sql;
+}
+
 function renderSql(sql, open) {
   const copy = el("button", { class: "copy", type: "button", "aria-label": "複製 SQL", text: "複製 SQL" });
   copy.addEventListener("click", async (e) => {
@@ -344,7 +364,7 @@ function buildDetail(d, { limit, sqlOpen, sections }) {
     requestAnimationFrame(() => drawChart(div, spec));
   }
   if (hasTable(d)) add("資料表", buildTable(d.columns, d.rows, limit, d.row_count));
-  if (d.sql) add("查詢的 SQL", renderSql(d.sql, sqlOpen));
+  if (d.sql) add("查詢的 SQL", renderSql(sqlWithBinds(d), sqlOpen));
   if (sections && d.sources?.length) add("文件來源", buildSources(d.sources, true));
   return frag;
 }
@@ -362,6 +382,8 @@ function renderPanel() {
     return;
   }
   panel.append(el("div", { class: "panel-head" }, [el("h2", { text: "分析結果" }), el("p", { text: e.question })]));
+  const pb = badges(e.data);
+  if (pb) panel.append(pb);
   if (!hasTable(e.data) && !e.data.sql && !e.data.sources?.length) {
     panel.append(el("div", { class: "section" }, el("p", { class: "empty", text: "這次查詢沒有可顯示的結果。" })));
   } else {
@@ -380,7 +402,7 @@ function feedbackRow(d) {
   const row = el("div", { class: "foot" });
   if (typeof d.latency_ms === "number") {
     const rows = d.row_count > 0 ? `・共 ${d.row_count} 列` : "";
-    const tries = d.sql && d.attempts ? `・嘗試 ${d.attempts} 次` : "";
+    const tries = d.sql && d.attempts && d.mode !== "template" ? `・嘗試 ${d.attempts} 次` : "";   // 既定程式不需要「嘗試次數」
     row.append(el("p", { class: "meta", text: `耗時 ${(d.latency_ms / 1000).toFixed(1)} 秒${tries}${rows}` }));
   }
   const up = el("button", { class: "fb", type: "button", "aria-pressed": "false", "aria-label": "這個回答有幫助", text: "👍 有幫助" });
@@ -409,6 +431,48 @@ function feedbackRow(d) {
   return row;
 }
 
+function badges(d) {
+  if (d.mode !== "template" || !d.template_title) return null;
+  return el("div", { class: "badges" }, [el("span", { class: "badge", text: `標準查詢：${d.template_title}` }),
+    ...(d.params_readable || []).map((t) => el("span", { class: "tag", text: t }))]);
+}
+
+function disableIn(node) { node.querySelectorAll("button.act").forEach((b) => { b.disabled = true; }); }
+
+// 沒有明確命中：列出最接近的既定程式，點選後才執行（後端會重新驗證參數）
+function buildProposals(e) {
+  const box = el("div", { class: "choices" });
+  for (const p of e.data.proposals) {
+    const run = el("button", { class: "act", type: "button", text: "執行這個" });
+    run.addEventListener("click", (ev) => {
+      ev.stopPropagation(); disableIn(box);
+      ask(e.question, { choice: { template_id: p.template_id, params: p.params }, display: `執行：${p.title}` });
+    });
+    box.append(el("div", { class: "proposal" }, [
+      el("h4", { text: p.title }), el("p", { class: "desc", text: p.description }),
+      el("div", { class: "badges" }, (p.params_readable || []).map((t) => el("span", { class: "tag", text: t }))),
+      ...(p.notes || []).map((n) => el("p", { class: "warn", text: `⚠ ${n}` })),
+      el("p", { class: "cols", text: `結果欄位：${(p.columns || []).join("、")}` }), run]));
+  }
+  const none = el("button", { class: "act ghost", type: "button", text: "都不是" });
+  none.addEventListener("click", (ev) => {
+    ev.stopPropagation(); disableIn(box);
+    box.append(el("p", { class: "notes", text: "已記錄這個問題，之後會評估新增既定查詢。" }));
+  });
+  box.append(el("div", {}, none));
+  return box;
+}
+
+function buildOptions(items, onPick) {
+  const box = el("div", { class: "opts" });
+  for (const o of items) {
+    const b = el("button", { class: "act ghost", type: "button", text: o });
+    b.addEventListener("click", (ev) => { ev.stopPropagation(); disableIn(box); onPick(o); });
+    box.append(b);
+  }
+  return box;
+}
+
 function renderCard(e, idx) {
   const { card, data: d } = e;
   card.replaceChildren();
@@ -417,17 +481,26 @@ function renderCard(e, idx) {
   const text = answerText(d);
   if (d.error && !text) {
     card.append(el("div", { class: "error", role: "alert", text: d.error }));
-    if (!isWide() && d.sql) card.append(renderSql(d.sql, false));
+    if (!isWide() && d.sql) card.append(renderSql(sqlWithBinds(d), false));
   } else {
     if (d.warning && hasTable(d)) card.append(el("div", { class: "warning", text: d.warning }));
+    const b = badges(d);
+    if (b) card.append(b);
+    if (d.notes?.length) card.append(el("p", { class: "notes", text: d.notes.join("；") }));
     if (text) card.append(el("p", { class: text.length > 60 || text.includes("\n") ? "explain long" : "explain", text }));
+    if (d.mode === "confirm" && d.proposals?.length) card.append(buildProposals(e));
+    if (d.mode === "clarify" && d.options?.length) card.append(buildOptions(d.options, (o) => ask(`${e.question}（指：${o}）`)));
+    if (d.mode === "no_match" && d.suggestions?.length) {
+      card.append(el("p", { class: "notes", text: "可以這樣問：" }));
+      card.append(buildOptions(d.suggestions, (q) => ask(q)));
+    }
     if (d.error) card.append(el("div", { class: "error", role: "alert", text: `這部分查詢失敗：${d.error}` }));
     if (d.sources?.length) card.append(buildSources(d.sources, false));
-    if (d.route === "docs" || d.route === "chat") {
-      // 文件與閒聊回答不顯示表格
+    if (d.route === "docs" || d.route === "chat" || (d.mode && d.mode !== "template")) {
+      // 文件、閒聊、反問、確認、未命中都不顯示表格
     } else if (d.row_count === 0) {
       card.append(el("p", { class: "empty", text: "查詢成功，但沒有符合條件的資料。" }));
-      if (!isWide() && d.sql) card.append(renderSql(d.sql, false));
+      if (!isWide() && d.sql) card.append(renderSql(sqlWithBinds(d), false));
     } else if (isWide()) {
       card.append(buildTable(d.columns, d.rows, CONFIG.previewRows, d.row_count).firstChild);   // 只放預覽表格
       card.append(el("p", { class: "hintline", text: "完整結果、圖表與 SQL 在右側 →" }));
@@ -456,11 +529,11 @@ function setBusy(v) {
   if (!v) input.focus();
 }
 
-async function ask(question) {
+async function ask(question, { choice = null, display = null } = {}) {
   question = question.trim();
   if (!question || busy) return;
   document.querySelector(".welcome")?.remove();
-  thread.append(el("div", { class: "msg-user", text: question }));
+  thread.append(el("div", { class: "msg-user", text: display || question }));
 
   const secs = el("span", { text: "0" });
   const card = el("div", { class: "card" }, el("div", { class: "pending" }, [el("div", { class: "spinner" }), el("span", { text: "思考中… 已 " }), secs, el("span", { text: " 秒" })]));
@@ -480,7 +553,7 @@ async function ask(question) {
   const ctrl = new AbortController();
   const abortTimer = setTimeout(() => ctrl.abort(), CONFIG.requestTimeoutMs);
   try {
-    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, session_id: sessionId, history: history.slice(-MAX_HISTORY) }), signal: ctrl.signal });
+    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, session_id: sessionId, history: history.slice(-MAX_HISTORY), ...(choice ? { choice } : {}) }), signal: ctrl.signal });
     entry.data = res.ok ? await res.json()
       : { error: res.status === 422 ? "問題格式不符（長度需為 1–500 字）" : `伺服器回應錯誤（HTTP ${res.status}）` };
     const reply = answerText(entry.data);

@@ -102,6 +102,8 @@ def readable(t: QueryTemplate, params: dict, today: date) -> list[str]:
             out.append(f"{s.label}：{resolve_period(v, today).label}")
         elif s.kind == "enum":
             out.append(f"{s.label}：{ENUM_DISPLAY.get(v, v)}")
+        elif s.name == "overdue_gt":
+            out.append("已逾期" if v == 0 else f"逾期超過 {v:,} 天")
         else:
             out.append(f"{s.label}：{v:,}" if isinstance(v, int) else f"{s.label}：{v}")
     return out
@@ -203,6 +205,7 @@ INTENT_SYSTEM = """你是公司 ERP 的查詢路由器。公司只能用下列�
 # 判斷規則
 1. status = "match"：某一個程式「完整」回答了問題：結果欄位直接就是使用者要的數字，參數也都在標準值內。填 template_id 與 params。
    問的是程式沒有提供的計算（例如平均每筆、成長率排名、某指標不在標準值內），就不是 match。
+   同時問「哪些」與「合計多少」時，選列出明細的程式（明細程式會一併算出合計），這是 match。
 2. status = "unsure"：沒有程式能完整回答，但有程式能回答其中一部分或相近的問題；或問題有多種解讀。
    在 alternatives 列出最多 3 個最接近的程式與參數（最相近的放前面）。
 3. status = "unsupported"：問題與這些 ERP 數字無關（例如薪資、人事、天氣、競爭對手、合約條款或規章內容），
@@ -210,6 +213,12 @@ INTENT_SYSTEM = """你是公司 ERP 的查詢路由器。公司只能用下列�
 4. params 只填該程式列出的參數。enum 參數填標準值；客戶、供應商、料號、業務照使用者的原話填入（系統會比對）；
    使用者沒提到的參數不要填（系統會用預設值）。
 5. 只輸出 JSON。
+"""
+
+DATA_PART_ONLY = """
+# 注意
+這個問題同時包含文件內容（合約、SOP、規章）的部分，那部分會由文件系統另外回答。
+你只需判斷其中「ERP 數字」的部分：若那部分能被某個程式完整回答，就是 match。
 """
 
 INTENT_JSON_HINT = ('{"status": "match|unsure|unsupported", "template_id": "模板 id 或 null", "params": {}, '
@@ -247,8 +256,10 @@ def format_catalog(ids: list[str]) -> str:
     return "\n".join(parts)
 
 
-def build_messages(question: str, ids: list[str], today: date) -> list[dict]:
+def build_messages(question: str, ids: list[str], today: date, data_part_only: bool = False) -> list[dict]:
     system = INTENT_SYSTEM.format(today=today.isoformat(), catalog=format_catalog(ids), period_codes=PERIOD_CODES)
+    if data_part_only:
+        system += DATA_PART_ONLY
     return [{"role": "system", "content": system}, {"role": "user", "content": question}]
 
 
@@ -310,7 +321,9 @@ NO_MATCH_MSG = "這類問題目前沒有對應的既定查詢，已記錄下來�
 CONFIRM_MSG = "找不到完全符合的既定查詢。您是要查下列其中一個嗎？點選後才會執行。"
 
 
-def recognize(question: str, today: date | None = None, deps: Deps | None = None) -> Intent:
+def recognize(question: str, today: date | None = None, deps: Deps | None = None,
+              data_part_only: bool = False) -> Intent:
+    """data_part_only：問題同時問數字與文件（路由為 both），只判斷數字的部分。"""
     today = today or date.today()
     deps = deps or Deps()
     try:
@@ -325,7 +338,7 @@ def recognize(question: str, today: date | None = None, deps: Deps | None = None
 
     ids = [tid for tid, _ in top]
     try:
-        out = deps.chat_json(build_messages(question, ids, today))
+        out = deps.chat_json(build_messages(question, ids, today, data_part_only))
     except Exception as e:  # noqa: BLE001
         log.warning("意圖辨識 LLM 失敗：%s", e)
         return Intent("no_match", message="AI 暫時無法使用，請稍後再試。", candidates=candidates)

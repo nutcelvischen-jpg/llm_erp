@@ -50,6 +50,15 @@ def test_rules_apply_to_rewritten_too():
     assert r.kind == "sql" and r.rewritten == "鴻遠機械去年營收"
 
 
+def test_both_returns_split_parts():
+    def f(msgs):
+        return {"kind": "both", "rewritten": "q", "sql_part": " 台陽逾期多少？ ", "docs_part": "台陽合約多久停止出貨？"}
+    r = route("台陽逾期多少？依合約多久可暫停出貨？", chat_json=f)
+    assert (r.kind, r.sql_part, r.docs_part) == ("both", "台陽逾期多少？", "台陽合約多久停止出貨？")
+    r = route("今年營收", chat_json=lambda m: {"kind": "sql", "rewritten": "今年營收", "sql_part": "x"})
+    assert r.sql_part == "" and r.docs_part == ""
+
+
 def test_empty_rewritten_falls_back_to_question():
     assert route("你好", chat_json=fake("chat", "")).rewritten == "你好"
 

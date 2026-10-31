@@ -1,10 +1,10 @@
-"""T23 Agent 主流程（純 Python，不用 LangGraph）。
+"""Agent 主流程（純 Python，不用 LangGraph）。
 
 route → sql / docs / both（兩支並行）/ chat → 組裝 Markdown → 稽核。
 任何一支失敗都回「這部分查詢失敗：原因」，不丟例外。
 
-sql 分支目前接 text2sql.run（AI 產生 SQL，必經 sql_guard、唯讀角色執行），回答一律標示
-「AI 即時產生」。T14b–T14f 的模板查詢完成後，只需替換 _default_sql。
+sql 分支走「既定程式」（catalog.runner.answer_question，T14f）：LLM 只辨識模板與參數、看結果寫回覆，
+要執行的 SQL 一律由程式寫死。沒有明確命中時列出最接近的既定程式讓使用者確認（confirm），AI 不寫 SQL。
 """
 from __future__ import annotations
 
@@ -15,15 +15,14 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 
 from .. import audit, numcheck
+from ..catalog.answer import numbers_supported
 from . import prompts
 from .router import Route
 
 log = logging.getLogger(__name__)
 
-AI_SQL_WARNING = "AI 即時產生的查詢，請查核 SQL 與結果"
 TABLE_ROWS = 20
 MERGE_TABLE_ROWS = 20
-_NOT_APPLICABLE = "這個問題無法用目前的 ERP 資料回答"  # text2sql 婉拒（不是故障）
 
 
 @dataclass
@@ -38,6 +37,17 @@ class AgentResult:
     row_count: int = 0
     attempts: int = 0
     sources: list[dict] = field(default_factory=list)
+    # 既定程式（模板）相關
+    mode: str | None = None              # template / clarify / confirm / no_match / error
+    template_id: str | None = None
+    template_title: str | None = None
+    params_readable: list[str] = field(default_factory=list)
+    binds: dict = field(default_factory=dict)
+    answer_source: str | None = None     # llm / fixed
+    options: list[str] = field(default_factory=list)
+    proposals: list[dict] = field(default_factory=list)
+    suggestions: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
     latency_ms: int = 0
     tokens: dict = field(default_factory=lambda: {"prompt": 0, "completion": 0})
     warning: str | None = None
@@ -68,10 +78,10 @@ class Deps:
         self.audit_write = self.audit_write or audit.write
 
 
-def _default_sql(question: str):
-    from .. import text2sql
+def _default_sql(question: str, choice: dict | None = None, data_part_only: bool = False):
+    from ..catalog import runner
 
-    return text2sql.run(question)
+    return runner.answer_question(question, choice=choice, data_part_only=data_part_only)
 
 
 def _default_chat(messages: list[dict]):
@@ -83,15 +93,15 @@ def _default_chat(messages: list[dict]):
 # ---------- 各分支 ----------
 @dataclass
 class _Sql:
+    """sql 分支的結果（包裝 CatalogAnswer）。ok = 有執行既定程式且成功。"""
     ok: bool = False
-    applicable: bool = True
+    applicable: bool = True     # False：clarify／confirm／no_match（不是故障）
     text: str = ""
-    sql: str = ""
-    columns: list[str] = field(default_factory=list)
-    rows: list[list] = field(default_factory=list)
-    row_count: int = 0
     error: str | None = None
-    attempts: int = 0
+    cat: object = None          # CatalogAnswer
+
+    def get(self, name, default=None):
+        return getattr(self.cat, name, default) if self.cat is not None else default
 
 
 @dataclass
@@ -105,67 +115,22 @@ class _Docs:
     completion_tokens: int = 0
 
 
-def run_sql(question: str, deps: Deps, summarize: bool = False) -> _Sql:
+def run_sql(question: str, deps: Deps, choice: dict | None = None, data_part_only: bool = False) -> _Sql:
     try:
-        a = deps.sql(question)
+        if choice:
+            a = deps.sql(question, choice)
+        elif data_part_only:
+            a = deps.sql(question, None, True)
+        else:
+            a = deps.sql(question)
     except Exception as e:
         log.exception("sql 分支失敗")
         return _Sql(error=f"數據查詢失敗：{e}")
-    if a.error:
-        return _Sql(applicable=not a.error.startswith(_NOT_APPLICABLE), sql=a.sql, error=a.error,
-                    attempts=a.attempts)
-    expl = (a.explanation or "").strip()
-    bad = numcheck.unsupported_numbers(expl, [question, a.sql], a.rows)
-    if bad or not expl:
-        if bad:
-            log.warning("查詢說明含未獲支持的數字 %s，改用固定句型", bad)
-        expl = f"查詢結果如下表（共 {a.row_count:,} 列）。"
-    res = _Sql(True, True, expl, a.sql, list(a.columns), list(a.rows), a.row_count, None, a.attempts)
-    if summarize and a.row_count > 0:
-        res.text = summarize_sql(question, res, deps) or res.text
-    return res
-
-
-_NO_SUM = ("率", "%", "天數", "日", "年", "月", "季", "單價", "成本")
-
-
-def _num(v: float) -> str:
-    return f"{v:,.0f}" if float(v).is_integer() else f"{v:,.2f}"
-
-
-def column_totals(columns: list[str], rows: list[list], row_count: int) -> dict[str, float]:
-    """程式算出的各數值欄合計（比率、天數、日期、單價等不加總）；結果被截斷時不算。"""
-    if len(rows) < 2 or len(rows) < row_count:
-        return {}
-    out = {}
-    for i, c in enumerate(columns):
-        vals = [r[i] for r in rows]
-        if any(k in c for k in _NO_SUM):
-            continue
-        if all(isinstance(v, int | float) and not isinstance(v, bool) for v in vals):
-            out[c] = round(sum(vals), 2)
-    return out
-
-
-def summarize_sql(question: str, s: _Sql, deps: Deps) -> str:
-    """LLM 看結果寫結論；數字檢查不過或失敗回空字串（沿用查詢說明）。"""
-    totals = column_totals(s.columns, s.rows, s.row_count)
-    user = (f"問題：{question}\n\n# 查詢結果（共 {s.row_count} 列，以下最多 {MERGE_TABLE_ROWS} 列）\n"
-            f"{_table_text(s.columns, s.rows, MERGE_TABLE_ROWS)}")
-    if totals:
-        user += f"\n\n# 程式計算的合計（全部 {s.row_count} 列）\n" + "；".join(
-            f"{c}合計={_num(v)}" for c, v in totals.items())
-    try:
-        r = deps.chat([{"role": "system", "content": prompts.SQL_SUMMARY_SYSTEM}, {"role": "user", "content": user}])
-    except Exception as e:  # noqa: BLE001
-        log.warning("查詢結論失敗，改用查詢說明：%s", e)
-        return ""
-    text = r.text.strip()
-    bad = numcheck.unsupported_numbers(text, [question], [*s.rows[:MERGE_TABLE_ROWS], list(totals.values())])
-    if bad:
-        log.warning("查詢結論含未獲支持的數字 %s，改用查詢說明", bad)
-        return ""
-    return text
+    if a.mode == "template":
+        return _Sql(True, True, a.answer, None, a)
+    if a.mode == "error":
+        return _Sql(False, True, "", a.error or "查詢失敗", a)
+    return _Sql(False, False, a.answer, None, a)   # clarify / confirm / no_match
 
 
 def run_docs(question: str, deps: Deps) -> _Docs:
@@ -205,12 +170,14 @@ def _table_text(columns: list[str], rows: list[list], n: int) -> str:
 
 def merge_both(question: str, s: _Sql, d: _Docs, deps: Deps) -> tuple[str, dict]:
     """兩支都有內容時由 LLM 寫綜合結論；數字檢查不過或失敗時退回固定組合。"""
-    fixed = "\n\n".join(x for x in (s.text if s.ok else "", d.text if d.ok else "") if x)
+    fixed = "\n\n".join(x for x in (s.text if s and s.ok else "", d.text if d and d.ok else "") if x)
     tokens = {"prompt": 0, "completion": 0}
-    if not (s.ok and d.ok and not d.refused):
+    if not (s and s.ok and d and d.ok and not d.refused):
         return fixed, tokens
-    user = (f"問題：{question}\n\n# 查詢結果（共 {s.row_count} 列，以下最多 {MERGE_TABLE_ROWS} 列）\n"
-            f"{_table_text(s.columns, s.rows, MERGE_TABLE_ROWS)}\n\n# 文件回答\n{d.text}")
+    rows = s.get("rows", [])
+    user = (f"問題：{question}\n\n# 查詢結果（{s.get('template_title')}；共 {len(rows)} 列，以下最多 "
+            f"{MERGE_TABLE_ROWS} 列）\n{_table_text(s.get('columns', []), rows, MERGE_TABLE_ROWS)}\n\n"
+            f"# 查詢結論\n{s.text}\n\n# 文件回答\n{d.text}")
     try:
         r = deps.chat([{"role": "system", "content": prompts.MERGE_SYSTEM}, {"role": "user", "content": user}])
     except Exception as e:  # noqa: BLE001
@@ -218,8 +185,8 @@ def merge_both(question: str, s: _Sql, d: _Docs, deps: Deps) -> tuple[str, dict]
         return fixed, tokens
     tokens = {"prompt": r.prompt_tokens, "completion": r.completion_tokens}
     text = r.text.strip()
-    bad = numcheck.unsupported_numbers(text, [question, d.text], s.rows)
-    if bad or not text:
+    ok, bad = numbers_supported(text, rows, {}, [question, d.text, s.text, *s.get("params_readable", [])])
+    if not ok or not text:
         log.warning("綜合結論含未獲支持的數字 %s，改用固定組合", bad)
         return fixed, tokens
     return text, tokens
@@ -250,8 +217,19 @@ def build_markdown(answer: str, s: _Sql | None, d: _Docs | None, failures: list[
     parts = [answer] if answer else []
     parts += [f"> 這部分查詢失敗：{f}" for f in failures]
     if s and s.ok:
-        parts.append(f"**數據**（{AI_SQL_WARNING}）\n\n{md_table(s.columns, s.rows, s.row_count)}")
-        parts.append(f"<details><summary>查詢的 SQL</summary>\n\n```sql\n{s.sql}\n```\n</details>")
+        tags = "｜".join(s.get("params_readable", []))
+        parts.append(f"**數據**（標準查詢：{s.get('template_title')}{'｜' + tags if tags else ''}）\n\n"
+                     + md_table(s.get("columns", []), s.get("rows", []), s.get("row_count", 0)))
+        binds = "\n".join(f"-- :{k} = {v!r}" for k, v in s.get("binds", {}).items())
+        parts.append(f"<details><summary>查詢的 SQL</summary>\n\n```sql\n{s.get('sql')}\n{binds}\n```\n</details>")
+    elif s and s.get("mode") == "confirm":
+        items = [f"{i}. **{p['title']}**：{'、'.join(p['params_readable']) or '無參數'}\n   結果欄位：{'、'.join(p['columns'])}"
+                 for i, p in enumerate(s.get("proposals", []), 1)]
+        parts.append("\n".join(items))
+    elif s and s.get("mode") == "clarify" and s.get("options"):
+        parts.append("可選：" + "、".join(s.get("options")))
+    elif s and s.get("mode") == "no_match" and s.get("suggestions"):
+        parts.append("可以這樣問：" + "、".join(s.get("suggestions")))
     if d and d.ok and d.sources:
         src = [f"{i}. {x['file_name']} 第 {x['page']} 頁" + (f" › {x['heading']}" if x["heading"] else "")
                for i, x in enumerate(d.sources, 1)]
@@ -261,12 +239,13 @@ def build_markdown(answer: str, s: _Sql | None, d: _Docs | None, failures: list[
 
 # ---------- 主流程 ----------
 def run_agent(question: str, history: list[dict] | None = None, session_id: str | None = None,
-              deps: Deps | None = None) -> AgentResult:
+              deps: Deps | None = None, choice: dict | None = None) -> AgentResult:
+    """choice：使用者在「確認既定程式」畫面點選的 {template_id, params}；有值時不再路由，直接執行。"""
     deps = deps or Deps()
     t0 = time.perf_counter()
     question = question.strip()
     try:
-        rt: Route = deps.route(question, history)
+        rt: Route = Route("sql", question, "choice") if choice else deps.route(question, history)
     except Exception as e:
         log.exception("路由失敗")
         rt = Route("chat", question, "error")
@@ -282,15 +261,20 @@ def run_agent(question: str, history: list[dict] | None = None, session_id: str 
 
     if rt.kind == "both":
         with ThreadPoolExecutor(max_workers=2) as ex:
-            fs, fd = ex.submit(run_sql, q, deps), ex.submit(run_docs, q, deps)
+            # 路由有拆出數字／文件兩部分就各問各的；沒有就用整句（意圖辨識只看數字部分）
+            if rt.sql_part:
+                fs = ex.submit(run_sql, rt.sql_part, deps)
+            else:
+                fs = ex.submit(run_sql, q, deps, None, True)
+            fd = ex.submit(run_docs, rt.docs_part or q, deps)
             s, d = fs.result(), fd.result()
     elif rt.kind == "sql":
-        s = run_sql(q, deps, summarize=True)
+        s = run_sql(q, deps, choice)
     elif rt.kind == "docs":
         d = run_docs(q, deps)
 
-    if s and not s.ok and (s.applicable or rt.kind == "sql"):
-        failures.append(s.error or "未知錯誤")
+    if s and s.error:  # 只有真正的故障才算失敗；clarify／confirm／no_match 是正常的回覆
+        failures.append(s.error)
     if d and not d.ok:
         failures.append(d.error or "未知錯誤")
     if d:
@@ -301,7 +285,7 @@ def run_agent(question: str, history: list[dict] | None = None, session_id: str 
         answer, t = merge_both(q, s, d, deps)
         tokens = {k: tokens[k] + t[k] for k in tokens}
     elif rt.kind == "sql":
-        answer = s.text if s.ok else ""
+        answer = s.text  # template 的結論，或 clarify／confirm／no_match 的提示
     elif rt.kind == "docs":
         answer = d.text if d.ok else ""
     else:
@@ -312,17 +296,24 @@ def run_agent(question: str, history: list[dict] | None = None, session_id: str 
     if route_err:
         failures.insert(0, f"問題分類失敗：{route_err}")
 
+    cat = s.cat if s else None
     res = AgentResult(
         markdown=build_markdown(answer, s, d, failures), route=rt.kind, answer=answer, rewritten=q,
-        sql=s.sql if s else "", columns=s.columns if s and s.ok else [], rows=s.rows if s and s.ok else [],
-        row_count=s.row_count if s and s.ok else 0, attempts=s.attempts if s else 0, sources=d.sources if d and d.ok else [],
-        tokens=tokens, warning=AI_SQL_WARNING if s and s.ok else None,
-        error="；".join(failures) or None,
+        sources=d.sources if d and d.ok else [], tokens=tokens, error="；".join(failures) or None,
     )
+    if cat is not None and (rt.kind == "sql" or s.ok):
+        res.mode, res.template_id, res.template_title = cat.mode, cat.template_id, cat.template_title
+        res.params_readable, res.notes, res.answer_source = cat.params_readable, cat.notes, cat.answer_source
+        res.options, res.proposals, res.suggestions = cat.options, cat.proposals, cat.suggestions
+        if s.ok:
+            res.sql, res.binds, res.columns, res.rows, res.row_count = (cat.sql, cat.binds, cat.columns, cat.rows,
+                                                                       cat.row_count)
+            res.attempts = 1
     res.latency_ms = int((time.perf_counter() - t0) * 1000)
     res.audit_id = deps.audit_write(audit.AuditRecord(
         question=question, session_id=session_id, route=rt.kind,
-        sql_text=res.sql or None, sql_ok=(s.ok if s else None), sql_rows=(res.row_count if s else None),
+        sql_text=(f"{res.sql}\n-- template: {res.template_id}\n-- binds: {res.binds}" if res.sql else None),
+        sql_ok=(s.ok if s and s.applicable else None), sql_rows=(res.row_count if s and s.ok else None),
         doc_sources=res.sources or None, answer=res.markdown, latency_ms=res.latency_ms,
         prompt_tokens=tokens["prompt"], completion_tokens=tokens["completion"], error=res.error,
     ))

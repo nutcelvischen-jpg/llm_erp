@@ -7,7 +7,8 @@ from backend.app.main import app
 
 client = TestClient(app)
 FIELDS = {"question", "sql", "explanation", "columns", "rows", "row_count", "attempts", "error", "latency_ms",
-          "route", "sources", "audit_id", "answer", "markdown", "warning", "rewritten"}
+          "route", "sources", "audit_id", "answer", "markdown", "warning", "rewritten", "mode", "template_id",
+          "template_title", "params_readable", "binds", "answer_source", "options", "proposals", "suggestions", "notes"}
 
 
 @pytest.fixture
@@ -15,8 +16,8 @@ def fake_run(monkeypatch):
     calls = []
 
     def setup(result):
-        def run(question, history, session_id):
-            calls.append({"question": question, "history": history, "session_id": session_id})
+        def run(question, history, session_id, choice=None):
+            calls.append({"question": question, "history": history, "session_id": session_id, "choice": choice})
             return result
         monkeypatch.setattr(chat_api.graph, "run_agent", run)
         return calls
@@ -27,8 +28,9 @@ def fake_run(monkeypatch):
 def ok_answer():
     return AgentResult(markdown="各客戶營收", route="sql", answer="各客戶營收", rewritten="各客戶營收？",
                        sql="SELECT 1 LIMIT 200", columns=["客戶", "營收"], rows=[["甲", 100], ["乙", 50]],
-                       row_count=2, attempts=1, warning="AI 即時產生的查詢，請查核 SQL 與結果",
-                       latency_ms=1200, audit_id=7)
+                       row_count=2, attempts=1, latency_ms=1200, audit_id=7, mode="template",
+                       template_id="sales_rank", template_title="銷售排名", params_readable=["排名對象：客戶"],
+                       binds={"date_from": "2026-01-01"}, answer_source="llm")
 
 
 def docs_answer():
@@ -76,7 +78,8 @@ def test_chat_returns_all_fields(fake_run):
     assert d["rows"] == [["甲", 100], ["乙", 50]] and d["columns"] == ["客戶", "營收"]
     assert d["error"] is None and isinstance(d["latency_ms"], int) and d["latency_ms"] >= 0
     assert d["question"] == "各客戶營收？" and d["route"] == "sql" and d["audit_id"] == 7
-    assert d["answer"] == d["explanation"] == "各客戶營收" and d["attempts"] == 1 and d["warning"]
+    assert d["answer"] == d["explanation"] == "各客戶營收" and d["attempts"] == 1 and d["warning"] is None
+    assert d["mode"] == "template" and d["template_title"] == "銷售排名" and d["binds"] == {"date_from": "2026-01-01"}
 
 
 def test_chat_strips_question_before_running(fake_run):
@@ -136,6 +139,14 @@ def test_invalid_history_is_422(fake_run, hist):
     assert client.post("/api/chat", json={"question": "q", "history": hist}).status_code == 422
 
 
+def test_choice_is_passed_to_agent(fake_run):
+    calls = fake_run(ok_answer())
+    body = {"question": "今年哪個客戶最賺", "choice": {"template_id": "sales_rank", "params": {"dimension": "客戶"}}}
+    assert client.post("/api/chat", json=body).status_code == 200
+    assert calls[0]["choice"] == {"template_id": "sales_rank", "params": {"dimension": "客戶"}}
+    assert client.post("/api/chat", json={"question": "q", "choice": {"params": {}}}).status_code == 422
+
+
 # ---------- /api/feedback ----------
 def test_feedback_ok(monkeypatch):
     calls = []
@@ -170,7 +181,7 @@ def test_real_demo_questions(q, route):
     assert d["route"] == route and d["error"] is None, d["error"]
     assert d["answer"] and d["audit_id"]
     if route in ("sql", "both"):
-        assert d["row_count"] >= 1 and d["sql"]
+        assert d["row_count"] >= 1 and d["sql"] and d["mode"] == "template" and d["template_title"]
     if route == "sql":
         assert d["row_count"] == 3
     if route in ("docs", "both"):

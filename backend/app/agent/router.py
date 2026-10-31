@@ -27,6 +27,8 @@ class Route:
     kind: Kind
     rewritten: str
     source: str = "llm"  # llm / rules / llm+rules
+    sql_part: str = ""   # both 時：只問數字的部分（給既定程式）
+    docs_part: str = ""  # both 時：只問文件的部分（給文件檢索）
 
 
 def rule_kinds(text: str) -> set[str]:
@@ -86,4 +88,8 @@ def route(question: str, history: list[dict] | None = None, *, chat_json: Callab
         return Route(merge(rule_kinds(question) | rule_kinds(rewritten)), rewritten, "rules")
     rules = rule_kinds(question) | rule_kinds(rewritten)
     final = merge({kind} | rules)
-    return Route(final, rewritten, "llm" if final == kind else "llm+rules")
+    r = Route(final, rewritten, "llm" if final == kind else "llm+rules")
+    if final == "both":
+        r.sql_part = str(out.get("sql_part") or "").strip()
+        r.docs_part = str(out.get("docs_part") or "").strip()
+    return r
