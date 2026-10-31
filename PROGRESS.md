@@ -253,4 +253,4 @@
 - 意圖黃金集 `data/golden/intents.yaml`（40 題：16 個模板各 2 題、8 題不支援）＋ `scripts/eval_intents.py`（`make eval-intent`；period 以實際日期區間比對）。
 - 調整：第一次跑 I14「應收金額最大的前 5 名客戶」被判成銷售排名 → 在兩個模板描述標明【銷售】／【應收帳款】並補一句措辭不同的 example（沒改題目）。
 - 測試 `backend/tests/test_intent.py`：候選排序與門檻、同義詞與夾值、不支援的參數值與期間 → confirm、省略參數用預設、不在候選的模板、實體四種狀態、缺必填、unsure 列候選（去重、排除不在候選或需反問者）、unsupported、LLM 例外、confirm 重新驗證、prompt 內容；真實 LLM 6 題。
-- 驗收：`make eval-intent` 連跑兩次 **模板 32/32 = 100%、參數 32/32 = 100%、不支援誤判 0/8**，平均 0.8–1.6 秒。`make test` 471 passed；`make test-llm` 全過。
+- 驗收：`make eval-intent` 連跑兩次 **模板 32/32 = 100%、參數 32/32 = 100%、不支援誤判 0/8**，平均 0.8–1.6 秒。`make test` 469 passed；`make test-llm` 31 passed。
