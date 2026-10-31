@@ -1,0 +1,870 @@
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 2
+  question: 鴻遠機械的合約中，延遲交貨的違約金怎麼計算？
+  answer: 每逾一日，按延遲交付部分貨款（未稅）之 0.3% 計付違約金，累計金額以該部分貨款之 10% 為上限。
+  phrase:
+  - 0.3%
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 2
+  question: 鴻遠機械的合約付款條件是什麼？
+  answer: 月結 30 天，每月 25 日結帳
+  phrase:
+  - 月結 30 天
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 2
+  question: 鴻遠機械的信用額度是多少？
+  answer: 新臺幣 5,000,000 元
+  phrase:
+  - 新臺幣 5,000,000 元
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 2
+  question: 鴻遠機械的產品保固期多久？
+  answer: 自交貨日起 12 個月
+  phrase:
+  - 12 個月
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 2
+  question: 鴻遠機械的驗收期限是多久？
+  answer: 收貨後 5 個工作日內
+  phrase:
+  - 5 個工作日
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 5
+  question: 鴻遠機械的合約中 BRG-6205-2RS 的單價是多少？
+  answer: NT$ 79.65
+  phrase:
+  - '79.65'
+- file: 銷售合約_鴻遠機械.pdf
+  doc_type: 合約
+  page: 3
+  question: 鴻遠機械年度採購達多少可以拿到銷售折讓？折讓比例是多少？
+  answer: 累計採購 2,000 萬元以上折讓 2%，3,000 萬元以上折讓 3%
+  phrase:
+  - 20,000,000
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 台陽科技的合約中，延遲交貨的違約金怎麼計算？
+  answer: 每逾一日，按延遲交付部分貨款（未稅）之 0.5% 計付違約金，累計金額以該部分貨款之 15% 為上限。
+  phrase:
+  - 0.5%
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 台陽科技的合約付款條件是什麼？
+  answer: 月結 30 天，每月 25 日結帳
+  phrase:
+  - 月結 30 天
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 台陽科技的信用額度是多少？
+  answer: 新臺幣 500,000 元
+  phrase:
+  - 新臺幣 500,000 元
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 台陽科技的產品保固期多久？
+  answer: 自交貨日起 18 個月
+  phrase:
+  - 18 個月
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 台陽科技的驗收期限是多久？
+  answer: 收貨後 7 個工作日內
+  phrase:
+  - 7 個工作日
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 5
+  question: 台陽科技的合約中 BRG-6205-2RS 的單價是多少？
+  answer: NT$ 77.81
+  phrase:
+  - '77.81'
+- file: 銷售合約_台陽科技.pdf
+  doc_type: 合約
+  page: 3
+  question: 台陽科技的發票逾期多久，賣方可以暫停出貨？
+  answer: 任何一張發票逾期超過 60 日
+  phrase:
+  - 逾期超過 60 日
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 力發金屬的合約中，延遲交貨的違約金怎麼計算？
+  answer: 每逾一日，按延遲交付部分貨款（未稅）之 0.2% 計付違約金，累計金額以該部分貨款之 5% 為上限。
+  phrase:
+  - 0.2%
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 力發金屬的合約付款條件是什麼？
+  answer: 月結 45 天，每月 25 日結帳
+  phrase:
+  - 月結 45 天
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 力發金屬的信用額度是多少？
+  answer: 新臺幣 1,000,000 元
+  phrase:
+  - 新臺幣 1,000,000 元
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 力發金屬的產品保固期多久？
+  answer: 自交貨日起 12 個月
+  phrase:
+  - 12 個月
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 力發金屬的驗收期限是多久？
+  answer: 收貨後 5 個工作日內
+  phrase:
+  - 5 個工作日
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 5
+  question: 力發金屬的合約中 BRG-6204-2RS 的單價是多少？
+  answer: NT$ 135.10
+  phrase:
+  - '135.10'
+- file: 銷售合約_力發金屬.pdf
+  doc_type: 合約
+  page: 3
+  question: 力發金屬的寄售庫存多久盤點一次？
+  answer: 每月最後一個工作日共同盤點
+  phrase:
+  - 每月最後一個工作日
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 新祥科技的合約中，延遲交貨的違約金怎麼計算？
+  answer: 每逾一日，按延遲交付部分貨款（未稅）之 0.4% 計付違約金，累計金額以該部分貨款之 12% 為上限。
+  phrase:
+  - 0.4%
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 新祥科技的合約付款條件是什麼？
+  answer: 月結 45 天，每月 25 日結帳
+  phrase:
+  - 月結 45 天
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 新祥科技的信用額度是多少？
+  answer: 新臺幣 500,000 元
+  phrase:
+  - 新臺幣 500,000 元
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 新祥科技的產品保固期多久？
+  answer: 自交貨日起 24 個月
+  phrase:
+  - 24 個月
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 2
+  question: 新祥科技的驗收期限是多久？
+  answer: 收貨後 10 個工作日內
+  phrase:
+  - 10 個工作日
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 5
+  question: 新祥科技的合約中 BRG-6205-2RS 的單價是多少？
+  answer: NT$ 76.55
+  phrase:
+  - '76.55'
+- file: 銷售合約_新祥科技.pdf
+  doc_type: 合約
+  page: 3
+  question: 新祥科技合約的貿易條件是什麼？
+  answer: FOB 台中港（Incoterms 2020）
+  phrase:
+  - FOB 台中港
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 明誠金屬的合約中，延遲交貨的違約金怎麼計算？
+  answer: 每逾一週（不足一週以一週計），按延遲交付部分貨款（未稅）之 1.5% 計付違約金，累計金額以該部分貨款之 12% 為上限。
+  phrase:
+  - 1.5%
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 明誠金屬的合約付款條件是什麼？
+  answer: 月結 45 天，每月 25 日結帳
+  phrase:
+  - 月結 45 天
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 明誠金屬的信用額度是多少？
+  answer: 新臺幣 2,000,000 元
+  phrase:
+  - 新臺幣 2,000,000 元
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 明誠金屬的產品保固期多久？
+  answer: 自交貨日起 12 個月
+  phrase:
+  - 12 個月
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 明誠金屬的驗收期限是多久？
+  answer: 收貨後 5 個工作日內
+  phrase:
+  - 5 個工作日
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 5
+  question: 明誠金屬的合約中 BRG-6205-ZZ 的單價是多少？
+  answer: NT$ 145.69
+  phrase:
+  - '145.69'
+- file: 銷售合約_明誠金屬.pdf
+  doc_type: 合約
+  page: 3
+  question: 明誠金屬的包裝每箱淨重上限多少？
+  answer: 20 公斤
+  phrase:
+  - 20 公斤
+- file: 採購合約_大成鋼鐵.pdf
+  doc_type: 合約
+  page: 1
+  question: 大成鋼鐵的標準交期是幾天？
+  answer: 採購單確認後 14 日
+  phrase:
+  - 14 日（日曆日）
+- file: 採購合約_大成鋼鐵.pdf
+  doc_type: 合約
+  page: 2
+  question: 大成鋼鐵延遲交貨，買方可以怎麼扣款？
+  answer: 每逾一日按延遲部分貨款 0.5% 扣款，上限 10%
+  phrase:
+  - 0.5%
+  - 10%
+- file: 採購合約_大成鋼鐵.pdf
+  doc_type: 合約
+  page: 2
+  question: 大成鋼鐵的付款條件是什麼？
+  answer: 月結 60 天
+  phrase:
+  - 月結 60 天
+- file: 採購合約_大成鋼鐵.pdf
+  doc_type: 合約
+  page: 2
+  question: 大成鋼鐵供應品的不良率超過多少可以整批退貨？
+  answer: 超過 0.5%
+  phrase:
+  - 0.5%
+- file: 採購合約_大成鋼鐵.pdf
+  doc_type: 合約
+  page: 2
+  question: 大成鋼鐵每批交貨要附什麼文件？
+  answer: 原廠材質證明書（含爐號、化學成分、機械性質）
+  phrase:
+  - 材質證明書
+- file: 採購合約_中鋼軸承材料.pdf
+  doc_type: 合約
+  page: 1
+  question: 中鋼軸承材料的標準交期是幾天？
+  answer: 採購單確認後 14 日
+  phrase:
+  - 14 日（日曆日）
+- file: 採購合約_中鋼軸承材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 中鋼軸承材料延遲交貨，買方可以怎麼扣款？
+  answer: 每逾一日按延遲部分貨款 0.3% 扣款，上限 10%
+  phrase:
+  - 0.3%
+  - 10%
+- file: 採購合約_中鋼軸承材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 中鋼軸承材料的付款條件是什麼？
+  answer: 月結 45 天
+  phrase:
+  - 月結 45 天
+- file: 採購合約_中鋼軸承材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 中鋼軸承材料供應品的不良率超過多少可以整批退貨？
+  answer: 超過 0.3%
+  phrase:
+  - 0.3%
+- file: 採購合約_中鋼軸承材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 中鋼軸承材料的 SUJ2 軸承鋼氧含量要求是多少？
+  answer: 8 ppm 以下
+  phrase:
+  - 8 ppm
+- file: 採購合約_永信金屬.pdf
+  doc_type: 合約
+  page: 1
+  question: 永信金屬的標準交期是幾天？
+  answer: 採購單確認後 21 日
+  phrase:
+  - 21 日（日曆日）
+- file: 採購合約_永信金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 永信金屬延遲交貨，買方可以怎麼扣款？
+  answer: 每逾一日按延遲部分貨款 0.5% 扣款，上限 15%
+  phrase:
+  - 0.5%
+  - 15%
+- file: 採購合約_永信金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 永信金屬的付款條件是什麼？
+  answer: 月結 60 天
+  phrase:
+  - 月結 60 天
+- file: 採購合約_永信金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 永信金屬供應品的不良率超過多少可以整批退貨？
+  answer: 超過 0.5%
+  phrase:
+  - 0.5%
+- file: 採購合約_永信金屬.pdf
+  doc_type: 合約
+  page: 2
+  question: 永信金屬的外箱每箱淨重上限多少？
+  answer: 15 公斤
+  phrase:
+  - 15 公斤
+- file: 採購合約_宏達齒輪材料.pdf
+  doc_type: 合約
+  page: 1
+  question: 宏達齒輪材料的標準交期是幾天？
+  answer: 採購單確認後 21 日
+  phrase:
+  - 21 日（日曆日）
+- file: 採購合約_宏達齒輪材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 宏達齒輪材料延遲交貨，買方可以怎麼扣款？
+  answer: 每逾一日按延遲部分貨款 0.4% 扣款，上限 10%
+  phrase:
+  - 0.4%
+  - 10%
+- file: 採購合約_宏達齒輪材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 宏達齒輪材料的付款條件是什麼？
+  answer: 月結 60 天
+  phrase:
+  - 月結 60 天
+- file: 採購合約_宏達齒輪材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 宏達齒輪材料供應品的不良率超過多少可以整批退貨？
+  answer: 超過 0.5%
+  phrase:
+  - 0.5%
+- file: 採購合約_宏達齒輪材料.pdf
+  doc_type: 合約
+  page: 2
+  question: 宏達齒輪材料的硬度與規格差異超過多少視為不合格？
+  answer: 正負 2 HRC
+  phrase:
+  - 2 HRC
+- file: 採購合約_精密熱處理.pdf
+  doc_type: 合約
+  page: 1
+  question: 精密熱處理的標準交期是幾天？
+  answer: 採購單確認後 28 日
+  phrase:
+  - 28 日（日曆日）
+- file: 採購合約_精密熱處理.pdf
+  doc_type: 合約
+  page: 2
+  question: 精密熱處理延遲交貨，買方可以怎麼扣款？
+  answer: 每逾一日按延遲部分貨款 0.6% 扣款，上限 10%
+  phrase:
+  - 0.6%
+  - 10%
+- file: 採購合約_精密熱處理.pdf
+  doc_type: 合約
+  page: 2
+  question: 精密熱處理的付款條件是什麼？
+  answer: 月結 30 天
+  phrase:
+  - 月結 30 天
+- file: 採購合約_精密熱處理.pdf
+  doc_type: 合約
+  page: 2
+  question: 精密熱處理供應品的不良率超過多少可以整批退貨？
+  answer: 超過 0.5%
+  phrase:
+  - 0.5%
+- file: 採購合約_精密熱處理.pdf
+  doc_type: 合約
+  page: 2
+  question: 精密熱處理的熱處理變形量上限是多少？
+  answer: 不得超過 0.05 mm
+  phrase:
+  - 0.05 mm
+- file: SOP_請假作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 事假要在幾天前申請？
+  answer: 3 個工作日前
+  phrase:
+  - 3 個工作日前
+- file: SOP_請假作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 請假超過 3 天由誰核准？
+  answer: 副總經理
+  phrase:
+  - 超過 3 日
+  - 副總經理
+- file: SOP_請假作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 病假要補辦請假單的期限是多久？
+  answer: 返回後 2 個工作日內；病假 1 日以上須檢附就診證明
+  phrase:
+  - 返回後 2 個工作日內補辦請假單
+- file: SOP_請假作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 未經核准缺勤會怎麼處理？
+  answer: 以曠職論，該日不給工資；繼續曠職三日或一個月累計六日，公司得依法終止契約
+  phrase:
+  - 以曠職論
+- file: SOP_請假作業程序.pdf
+  doc_type: SOP
+  page: 3
+  question: 請假的最小單位是多久？
+  answer: 1 小時，不足 1 小時以 1 小時計
+  phrase:
+  - 最小單位為 1 小時
+- file: SOP_費用報支作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 費用要在多久內報支？
+  answer: 費用發生後 30 日內
+  phrase:
+  - 30 日內
+- file: SOP_費用報支作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 報支金額 5 萬元要誰核准？
+  answer: 副總經理（30,001 至 100,000 元）
+  phrase:
+  - 30,001 至 100,000 元
+- file: SOP_費用報支作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 出差住宿費北部每晚上限多少？
+  answer: 3,000 元
+  phrase:
+  - 3,000 元以內
+- file: SOP_費用報支作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 費用報支每月幾號付款？
+  answer: 每月 10 日及 25 日
+  phrase:
+  - 每月 10 日及 25 日
+- file: SOP_費用報支作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 預借款返回後多久內要核銷？
+  answer: 7 日內
+  phrase:
+  - 7 日內
+- file: SOP_費用報支作業程序.pdf
+  doc_type: SOP
+  page: 3
+  question: 客戶餐敘的交際費每人每餐上限多少？
+  answer: 1,000 元以內
+  phrase:
+  - 每人每餐 1,000 元以內
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 進料驗收要在收貨後多久內完成？
+  answer: 2 個工作日內
+  phrase:
+  - 收貨後 2 個工作日內完成驗收
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 進料驗收的抽樣標準 AQL 是多少？
+  answer: 嚴重缺點 AQL 1.0，輕微缺點 AQL 2.5
+  phrase:
+  - AQL 1.0
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 批量 800 個的進料，抽樣數與允收數是多少？
+  answer: 批量 501–1,200：樣本 80 個，允收 2 個
+  phrase:
+  - 501–1,200
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 特採需要哪些人簽核？
+  answer: 品保主管及生產主管雙方簽核
+  phrase:
+  - 品保主管及生產主管
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 供應商評分低於幾分列為觀察供應商？
+  answer: 低於 70 分
+  phrase:
+  - 低於 70 分
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 驗收紀錄保存多久？
+  answer: 3 年
+  phrase:
+  - 保存期限為 3 年
+- file: SOP_進料驗收作業程序.pdf
+  doc_type: SOP
+  page: 3
+  question: 進料緊急放行需要誰簽核？
+  answer: 品保主管與生產主管
+  phrase:
+  - 緊急放行
+- file: SOP_客訴處理作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 重大（A 級）客訴要多久內提出暫時對策？
+  answer: 24 小時內
+  phrase:
+  - 24 小時內
+- file: SOP_客訴處理作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: A 級客訴初步回覆時限是多久？
+  answer: 2 小時內
+  phrase:
+  - 2 小時內
+- file: SOP_客訴處理作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 客訴處理金額 8 萬元由誰決定？
+  answer: 副總經理（50,001 至 200,000 元）
+  phrase:
+  - 50,001 至 200,000 元
+- file: SOP_客訴處理作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 客訴對策實施後要追蹤多久？
+  answer: 30 日
+  phrase:
+  - 追蹤
+- file: SOP_客訴處理作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: A 級客訴要用什麼報告回覆客戶？
+  answer: 8D 報告
+  phrase:
+  - A 級以 8D 報告回覆
+- file: SOP_客訴處理作業程序.pdf
+  doc_type: SOP
+  page: 3
+  question: 三個月內同一客戶同一原因重複客訴會怎樣？
+  answer: 等級提高一級處理
+  phrase:
+  - 等級提高一級處理
+- file: SOP_出貨檢驗與包裝作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 出貨包裝每箱淨重上限多少？
+  answer: 20 公斤
+  phrase:
+  - 20 公斤
+- file: SOP_出貨檢驗與包裝作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 棧板最多可以堆疊幾層？
+  answer: 3 層
+  phrase:
+  - 3 層
+- file: SOP_出貨檢驗與包裝作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 一般訂單的標準出貨時限是多久？
+  answer: 訂單確認後 7 個工作日
+  phrase:
+  - 7 個工作日
+- file: SOP_出貨檢驗與包裝作業程序.pdf
+  doc_type: SOP
+  page: 1
+  question: 預見延遲出貨時要在什麼時候通知？
+  answer: 當日通知業務課，由業務課通知客戶
+  phrase:
+  - 當日
+- file: SOP_出貨檢驗與包裝作業程序.pdf
+  doc_type: SOP
+  page: 2
+  question: 軸承的內包裝是什麼？
+  answer: 防鏽油紙加塑膠袋
+  phrase:
+  - 防鏽油紙加塑膠袋
+- file: SOP_出貨檢驗與包裝作業程序.pdf
+  doc_type: SOP
+  page: 3
+  question: 客戶要求提早出貨，生管多久內回覆？
+  answer: 1 個工作日內
+  phrase:
+  - 1 個工作日內回覆業務課
+- file: 規格書_BRG-6205-2RS.pdf
+  doc_type: 規格
+  page: 1
+  question: 6205-2RS 軸承的內徑、外徑和寬度是多少？
+  answer: 內徑 25 mm、外徑 52 mm、寬度 15 mm
+  phrase:
+  - 25 mm
+  - 52 mm
+- file: 規格書_BRG-6205-2RS.pdf
+  doc_type: 規格
+  page: 1
+  question: 6205-2RS 的基本額定動負荷是多少？
+  answer: 14.0 kN
+  phrase:
+  - 14.0 kN
+- file: 規格書_BRG-6205-2RS.pdf
+  doc_type: 規格
+  page: 1
+  question: 6205-2RS 的極限轉速是多少？
+  answer: 9,500 rpm（脂潤滑）
+  phrase:
+  - 9,500 rpm
+- file: 規格書_BRG-6205-2RS.pdf
+  doc_type: 規格
+  page: 3
+  question: 6205-2RS 的最低訂購量與包裝是多少？
+  answer: 每盒 10 顆、每箱 5 盒（50 顆），最低訂購量 50 顆
+  phrase:
+  - 每箱 5 盒（50 顆）
+- file: 規格書_BRG-6205-2RS.pdf
+  doc_type: 規格
+  page: 2
+  question: 6205-2RS 軸承的內外環硬度規格是多少？
+  answer: HRC 58–62
+  phrase:
+  - HRC 58–62
+- file: 規格書_BRG-6205-2RS.pdf
+  doc_type: 規格
+  page: 2
+  question: 2RS 和 ZZ 型軸承有什麼差別？
+  answer: 2RS 橡膠密封，防塵防水較好但極限轉速較低；ZZ 金屬防塵蓋，轉速較高但防水較差
+  phrase:
+  - 2RS（橡膠密封）
+- file: 規格書_GEAR-M2-40T.pdf
+  doc_type: 規格
+  page: 1
+  question: GEAR-M2-40T 的節圓直徑與外徑是多少？
+  answer: 節圓直徑 80 mm，外徑 84 mm
+  phrase:
+  - 節圓直徑
+  - 84 mm
+- file: 規格書_GEAR-M2-40T.pdf
+  doc_type: 規格
+  page: 2
+  question: GEAR-M2-40T 的材質與硬度是什麼？
+  answer: S45C 中碳鋼，調質後硬度 HRC 28–32
+  phrase:
+  - HRC 28–32
+- file: 規格書_GEAR-M2-40T.pdf
+  doc_type: 規格
+  page: 1
+  question: GEAR-M2-40T 的孔徑與公差是多少？
+  answer: 20 mm（H7）
+  phrase:
+  - 20 mm（H7）
+- file: 規格書_GEAR-M2-40T.pdf
+  doc_type: 規格
+  page: 2
+  question: GEAR-M2-40T 建議額定輸出扭矩是多少？
+  answer: 約 38 N·m
+  phrase:
+  - 38 N·m
+- file: 規格書_GEAR-M2-40T.pdf
+  doc_type: 規格
+  page: 3
+  question: GEAR-M2-40T 的最低訂購量是多少？
+  answer: 20 件
+  phrase:
+  - 最低訂購量為 20 件
+- file: 規格書_GEAR-M2-40T.pdf
+  doc_type: 規格
+  page: 2
+  question: GEAR-M2-40T 與 GEAR-M2-20T 嚙合的中心距是多少？
+  answer: 60 mm
+  phrase:
+  - 60 mm
+- file: 規格書_FST-M8x30-HEX.pdf
+  doc_type: 規格
+  page: 1
+  question: FST-M8x30-HEX 的強度等級與螺紋規格是什麼？
+  answer: 強度等級 8.8，M8 × 1.25
+  phrase:
+  - M8 × 1.25
+- file: 規格書_FST-M8x30-HEX.pdf
+  doc_type: 規格
+  page: 1
+  question: M8 螺栓 8.8 級的建議鎖緊扭矩是多少？
+  answer: 25 N·m（乾燥、無潤滑）
+  phrase:
+  - '25'
+- file: 規格書_FST-M8x30-HEX.pdf
+  doc_type: 規格
+  page: 1
+  question: FST-M8x30-HEX 的頭部對邊寬是多少？
+  answer: 13 mm
+  phrase:
+  - 13 mm
+- file: 規格書_FST-M8x30-HEX.pdf
+  doc_type: 規格
+  page: 2
+  question: FST-M8x30-HEX 的包裝與最低訂購量是多少？
+  answer: 每盒 500 件，最低訂購量 500 件
+  phrase:
+  - 每盒 500 件
+- file: 規格書_FST-M8x30-HEX.pdf
+  doc_type: 規格
+  page: 1
+  question: FST-M8x30-HEX 的抗拉強度與鹽霧規格是多少？
+  answer: 抗拉強度 800 MPa 以上，鹽霧 48 小時無白鏽
+  phrase:
+  - 800 MPa
+- file: 規格書_FST-M8x30-HEX.pdf
+  doc_type: 規格
+  page: 2
+  question: 加潤滑劑時螺栓的鎖緊扭矩要怎麼調整？
+  answer: 降低約 20–30%
+  phrase:
+  - 20–30%
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 平日加班前兩小時的加班費倍率是多少？
+  answer: 1.34 倍
+  phrase:
+  - 1.34 倍
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 休息日加班第 9 到第 12 小時的加班費倍率是多少？
+  answer: 2.67 倍
+  phrase:
+  - 2.67 倍
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 每月加班時數上限是多少？
+  answer: 每月不得超過 46 小時
+  phrase:
+  - 46 小時
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 每小時工資額怎麼計算？
+  answer: 月薪（含固定津貼）除以 240
+  phrase:
+  - 除以 240
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 補休要在加班日起多久內休完？
+  answer: 6 個月內，逾期折發加班費
+  phrase:
+  - 6 個月內
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 3
+  question: 公司的發薪日是幾號？
+  answer: 每月 5 日
+  phrase:
+  - 每月 5 日
+- file: 人資_工作規則與加班費辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 加班的最小計算單位是多少？
+  answer: 30 分鐘
+  phrase:
+  - 30 分鐘為最小單位
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 1
+  question: 事假一年可以請幾天？
+  answer: 每年 14 日，不給薪
+  phrase:
+  - 每年 14 日
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 1
+  question: 特休要提前幾天申請？
+  answer: 3 個工作日前
+  phrase:
+  - 3 個工作日前
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 1
+  question: 請假最小單位是多少？
+  answer: 1 小時
+  phrase:
+  - 最小單位為 1 小時
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 1
+  question: 請假超過幾天要副總核准？
+  answer: 逾 3 日須副總經理核准
+  phrase:
+  - 逾 3 日
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 1
+  question: 年資滿 3 年未滿 5 年有幾天特休？
+  answer: 每年 14 日
+  phrase:
+  - 每年 14 日
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 1
+  question: 婚假有幾天？
+  answer: 8 日，照給薪
+  phrase:
+  - 婚假
+  - 8 日
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 特休沒休完怎麼處理？
+  answer: 公司依年度終結前一日工資折算發給，或協商遞延
+  phrase:
+  - 折算發給工資
+- file: 人資_請假與特休管理辦法.pdf
+  doc_type: 人資
+  page: 2
+  question: 請事假 1 天要扣多少薪水（月薪 48,000）？
+  answer: 扣 1,600 元
+  phrase:
+  - 1,600 元
