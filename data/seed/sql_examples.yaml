@@ -189,3 +189,31 @@
     FROM "v_採購明細"
     WHERE "採購日期" >= DATE_TRUNC('year', CURRENT_DATE) AND "採購狀態" <> '取消'
     GROUP BY "供應商" ORDER BY "採購金額" DESC
+
+- question: 今年累計毛利跟去年同期比，整體是增是減？哪些客戶下滑最多？
+  tags: [毛利, 毛利率, 同期比較, 客戶, 下滑, 整體與明細]
+  sql: |
+    WITH cur AS (
+      SELECT "客戶名稱", SUM("毛利") AS gp, SUM("銷售金額") AS rev FROM "v_銷售明細"
+      WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) GROUP BY "客戶名稱"),
+    prev AS (
+      SELECT "客戶名稱", SUM("毛利") AS gp, SUM("銷售金額") AS rev FROM "v_銷售明細"
+      WHERE "訂單日期" >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'
+        AND "訂單日期" <= CURRENT_DATE - INTERVAL '1 year' GROUP BY "客戶名稱"),
+    cmp AS (
+      SELECT COALESCE(c."客戶名稱", p."客戶名稱") AS "客戶名稱",
+             COALESCE(c.gp, 0) AS gp_now, COALESCE(p.gp, 0) AS gp_prev,
+             COALESCE(c.rev, 0) AS rev_now, COALESCE(p.rev, 0) AS rev_prev
+      FROM cur c FULL JOIN prev p ON p."客戶名稱" = c."客戶名稱"),
+    ranked AS (
+      SELECT 0 AS ord, '（全公司）' AS "對象", SUM(gp_now) AS gp_now, SUM(gp_prev) AS gp_prev,
+             SUM(rev_now) AS rev_now, SUM(rev_prev) AS rev_prev FROM cmp
+      UNION ALL
+      SELECT * FROM (SELECT 1, "客戶名稱", gp_now, gp_prev, rev_now, rev_prev FROM cmp
+                     ORDER BY gp_now - gp_prev ASC LIMIT 5) t)
+    SELECT "對象", ROUND(gp_now, 0) AS "今年累計毛利", ROUND(gp_prev, 0) AS "去年同期毛利",
+           ROUND(gp_now - gp_prev, 0) AS "毛利增減",
+           ROUND(100.0 * gp_now / NULLIF(rev_now, 0), 1) AS "今年毛利率(%)",
+           ROUND(100.0 * gp_prev / NULLIF(rev_prev, 0), 1) AS "去年同期毛利率(%)"
+    FROM ranked ORDER BY ord, gp_now - gp_prev ASC
+    LIMIT 6

@@ -29,3 +29,7 @@ def test_numbers_glued_to_chinese():
 
 def test_codes_are_not_numbers():
     assert [v for v, _, _ in extract_numbers("FST-M8x30-HEX、BRG-6205-2RS")] == [6205.0, 2.0]
+
+
+def test_negative_results_matched_by_absolute_value():
+    assert unsupported_numbers("毛利比去年同期減少 284,485 元", rows=[[-284485]]) == []

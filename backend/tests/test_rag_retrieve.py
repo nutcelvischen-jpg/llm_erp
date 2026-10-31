@@ -107,3 +107,36 @@ def test_real_penalty_query_hits_sales_contract():
 def test_real_annual_leave_query_hits_hr():
     hits = retrieve("特休幾天")
     assert hits and hits[0].doc_type == "人資"
+
+
+def test_next_chunk_id():
+    from backend.app.rag.retrieve import next_chunk_id
+
+    assert next_chunk_id("abc123-009") == "abc123-010" and next_chunk_id("x") is None
+
+
+def test_continuation_chunk_is_appended():
+    c = QdrantClient(":memory:")
+    ensure_collection(c, "t", DIM)
+    chunks = [
+        Chunk("d-000", "d", "人資_加班.pdf", 2, ["五、加班費計算"], "加班費倍率如下表：", "text", "人資"),
+        Chunk("d-001", "d", "人資_加班.pdf", 2, ["表 3 加班費倍率"], "| 平日 | 1.34 倍 |", "table", "人資"),
+        Chunk("d-002", "d", "人資_加班.pdf", 3, ["六、補休"], "補休 6 個月內休畢。", "text", "人資"),
+    ]
+    ingest_chunks(c, chunks, fake_embed, 1, "t")
+
+    def only_first(q, docs, n):
+        return [(next(i for i, d in enumerate(docs) if "如下表" in d), 0.9)]
+
+    hits = retrieve("加班費", top_k=10, top_n=1, rerank=only_first, **kw(c))
+    assert [h.chunk_id for h in hits] == ["d-000", "d-001"] and hits[1].score == 0.9
+    # 下一塊已在結果中時不重複
+    hits = retrieve("加班費", top_k=10, top_n=3, rerank=lambda q, d, n: [(i, 1.0) for i in range(len(d))], **kw(c))
+    assert len(hits) == 3 and len({h.chunk_id for h in hits}) == 3
+
+
+def test_continuation_pattern_tolerates_pdf_spaces():
+    from backend.app.rag.retrieve import _CONTINUES
+
+    assert all(_CONTINUES.search(t) for t in ["倍率如下表：", "倍率如下 表：", "規定如下：\n", "如下所示:"])
+    assert not _CONTINUES.search("如下表所列之外，另依勞基法辦理。")

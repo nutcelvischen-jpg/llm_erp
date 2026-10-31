@@ -96,6 +96,7 @@
   .section details { margin-top: 0; }
   summary { cursor: pointer; color: var(--brand); font-size: 14px; user-select: none; }
   .sql-box { position: relative; margin-top: 8px; }
+  .sql-box pre { padding-top: 40px; }  /* 留位置給右上角的「複製 SQL」，避免蓋住第一行 */
   pre { margin: 0; padding: 14px 16px; background: #0f1b2d; color: #dbe7f7; border-radius: 10px;
     overflow-x: auto; font: 13px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
   .copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 4px 10px; border-radius: 6px;
@@ -161,12 +162,12 @@ const CONFIG = {
     palette: ["#0f4c81", "#2a9d8f", "#e9a23b", "#d1495b", "#7a5ea8", "#5b8def"],
   },
   examples: [
-    "哪個客戶今年的營收比去年同期掉最多？",
-    "目前逾期超過 60 天的應收帳款有哪些客戶？",
-    "哪些料號超過 180 天沒有異動？壓了多少庫存金額？",
-    "依目前待出貨的訂單，哪些料號會缺料？建議採購多少？",
-    "今年的毛利率比去年同期好還是差？",
-    "各供應商的準時交貨率",
+    "今年到目前為止毛利跟去年同期比怎樣？哪個客戶掉最多？",
+    "哪些客戶的應收逾期超過 60 天？金額多少？",
+    "鴻遠機械的合約，延遲交貨罰款怎麼算？",
+    "哪些料號超過 180 天沒動？壓了多少錢？",
+    "依目前待出貨訂單，哪些料號會缺料？建議採購多少？",
+    "員工加班費怎麼計算？依據哪份規章？",
   ],
   previewRows: 5,        // 寬螢幕：對話卡片內的預覽列數
   inlineRows: 20,        // 窄螢幕：卡片內完整表格的列數上限

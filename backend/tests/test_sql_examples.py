@@ -14,11 +14,12 @@ EXAMPLES = yaml.safe_load((ROOT / "data" / "seed" / "sql_examples.yaml").read_te
 
 
 # ---------- 範例檔本身 ----------
-def test_twenty_well_formed_examples():
-    assert len(EXAMPLES) == 20
+def test_at_least_twenty_well_formed_examples():
+    # T12 起始 20 組；之後依 T14 規則可補範例（T30 加入第 21 組：整體＋客戶的毛利同期比較）
+    assert len(EXAMPLES) >= 20
     for ex in EXAMPLES:
         assert ex["question"].strip() and ex["sql"].strip() and ex["tags"]
-    assert len({ex["question"] for ex in EXAMPLES}) == 20
+    assert len({ex["question"] for ex in EXAMPLES}) == len(EXAMPLES)
 
 
 def test_examples_cover_required_topics():

@@ -46,8 +46,20 @@ def test_sql_route_builds_table_sql_and_warning():
 
 def test_sql_explanation_with_unsupported_number_uses_fixed_sentence():
     bad = SqlAnswer(sql="SELECT 1", explanation="營收成長 37%", columns=["x"], rows=[[1]], row_count=1)
-    r = run_agent("q", deps=make("sql", sql=bad)[0])
+    r = run_agent("q", deps=make("sql", sql=bad, chat_text="營收成長 88%")[0])
     assert r.answer == "查詢結果如下表（共 1 列）。"
+
+
+def test_sql_summary_used_when_numbers_supported():
+    deps, calls, _ = make("sql", chat_text="今年營收最高的是鴻遠機械，營收 12,000,000 元。")
+    r = run_agent("今年營收最高的三個客戶", deps=deps)
+    assert r.answer == "今年營收最高的是鴻遠機械，營收 12,000,000 元。"
+    assert "第 1 列：客戶名稱=鴻遠機械；營收=12000000" in calls["chat"][0][1]["content"]
+
+
+def test_sql_summary_with_invented_number_keeps_explanation():
+    deps, _, _ = make("sql", chat_text="鴻遠機械營收 1,300 萬元。")
+    assert run_agent("今年營收最高的三個客戶", deps=deps).answer == "今年營收最高的 3 個客戶"
 
 
 def test_docs_route_has_sources_and_no_table():
@@ -148,3 +160,29 @@ def test_real_three_demo_questions():
         assert r.markdown and r.route == kind and r.audit_id
     with engine.connect() as c:
         assert c.execute(text("SELECT count(*) FROM app.audit_log")).scalar() == before + 3
+
+
+def test_column_totals():
+    from backend.app.agent.graph import column_totals
+
+    cols = ["料號", "庫存金額", "未異動天數", "毛利率(%)", "數量"]
+    rows = [["A", 100.5, 200, 25.1, 3], ["B", 50, 190, 20.0, 4]]
+    assert column_totals(cols, rows, 2) == {"庫存金額": 150.5, "數量": 7}
+    assert column_totals(cols, rows, 300) == {}  # 結果被截斷時不加總
+    assert column_totals(cols, rows[:1], 1) == {}
+
+
+def test_sql_summary_may_cite_program_totals():
+    sql = SqlAnswer(sql="SELECT 1", explanation="呆滯料號", columns=["料號", "庫存金額"],
+                    rows=[["A", 1000], ["B", 2500]], row_count=2)
+    deps, calls, _ = make("sql", sql=sql, chat_text="2 個料號合計壓了 3,500 元。")
+    assert run_agent("壓了多少錢", deps=deps).answer == "2 個料號合計壓了 3,500 元。"
+    assert "庫存金額合計=3,500" in calls["chat"][0][1]["content"]
+
+
+def test_totals_keep_all_digits():
+    sql = SqlAnswer(sql="SELECT 1", explanation="x", columns=["料號", "庫存金額"],
+                    rows=[["A", 2044440], ["B", 1408176]], row_count=2)
+    deps, calls, _ = make("sql", sql=sql, chat_text="ok")
+    run_agent("q", deps=deps)
+    assert "庫存金額合計=3,452,616" in calls["chat"][0][1]["content"]

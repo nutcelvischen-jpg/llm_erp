@@ -2,6 +2,7 @@
 
 允許：完全相同（去千分位）、依回覆的小數位數四捨五入後相同、萬／億換算、
 年份（1900–2100）與 ≤ 31 的小整數（月份、日、名次、條次）。
+結果中的負數以絕對值比對（回覆用「減少」等文字表達方向，正負號錯置無法偵測）。
 """
 from __future__ import annotations
 
@@ -45,7 +46,8 @@ def _supported(v: float, dec: int, raw: str, allowed: list[float]) -> bool:
         return True
     scale = 1e8 if "億" in raw else 1e4 if "萬" in raw else 1.0
     tol = 0.5 * scale * 10 ** (-dec) + 1e-9
-    return any(abs(a - v) <= tol for a in allowed)
+    # 回覆中的數字不帶正負號（方向用「減少／下滑」等文字表達），所以和結果的絕對值比對
+    return any(abs(abs(a) - v) <= tol for a in allowed)
 
 
 def unsupported_numbers(text: str, texts: Iterable[str] = (), rows: Iterable[Iterable] = ()) -> list[str]:

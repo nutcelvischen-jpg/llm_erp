@@ -105,7 +105,7 @@ class _Docs:
     completion_tokens: int = 0
 
 
-def run_sql(question: str, deps: Deps) -> _Sql:
+def run_sql(question: str, deps: Deps, summarize: bool = False) -> _Sql:
     try:
         a = deps.sql(question)
     except Exception as e:
@@ -120,7 +120,52 @@ def run_sql(question: str, deps: Deps) -> _Sql:
         if bad:
             log.warning("查詢說明含未獲支持的數字 %s，改用固定句型", bad)
         expl = f"查詢結果如下表（共 {a.row_count:,} 列）。"
-    return _Sql(True, True, expl, a.sql, list(a.columns), list(a.rows), a.row_count, None, a.attempts)
+    res = _Sql(True, True, expl, a.sql, list(a.columns), list(a.rows), a.row_count, None, a.attempts)
+    if summarize and a.row_count > 0:
+        res.text = summarize_sql(question, res, deps) or res.text
+    return res
+
+
+_NO_SUM = ("率", "%", "天數", "日", "年", "月", "季", "單價", "成本")
+
+
+def _num(v: float) -> str:
+    return f"{v:,.0f}" if float(v).is_integer() else f"{v:,.2f}"
+
+
+def column_totals(columns: list[str], rows: list[list], row_count: int) -> dict[str, float]:
+    """程式算出的各數值欄合計（比率、天數、日期、單價等不加總）；結果被截斷時不算。"""
+    if len(rows) < 2 or len(rows) < row_count:
+        return {}
+    out = {}
+    for i, c in enumerate(columns):
+        vals = [r[i] for r in rows]
+        if any(k in c for k in _NO_SUM):
+            continue
+        if all(isinstance(v, int | float) and not isinstance(v, bool) for v in vals):
+            out[c] = round(sum(vals), 2)
+    return out
+
+
+def summarize_sql(question: str, s: _Sql, deps: Deps) -> str:
+    """LLM 看結果寫結論；數字檢查不過或失敗回空字串（沿用查詢說明）。"""
+    totals = column_totals(s.columns, s.rows, s.row_count)
+    user = (f"問題：{question}\n\n# 查詢結果（共 {s.row_count} 列，以下最多 {MERGE_TABLE_ROWS} 列）\n"
+            f"{_table_text(s.columns, s.rows, MERGE_TABLE_ROWS)}")
+    if totals:
+        user += f"\n\n# 程式計算的合計（全部 {s.row_count} 列）\n" + "；".join(
+            f"{c}合計={_num(v)}" for c, v in totals.items())
+    try:
+        r = deps.chat([{"role": "system", "content": prompts.SQL_SUMMARY_SYSTEM}, {"role": "user", "content": user}])
+    except Exception as e:  # noqa: BLE001
+        log.warning("查詢結論失敗，改用查詢說明：%s", e)
+        return ""
+    text = r.text.strip()
+    bad = numcheck.unsupported_numbers(text, [question], [*s.rows[:MERGE_TABLE_ROWS], list(totals.values())])
+    if bad:
+        log.warning("查詢結論含未獲支持的數字 %s，改用查詢說明", bad)
+        return ""
+    return text
 
 
 def run_docs(question: str, deps: Deps) -> _Docs:
@@ -153,8 +198,9 @@ def run_chat(question: str, history: list[dict] | None, deps: Deps) -> tuple[str
 
 
 def _table_text(columns: list[str], rows: list[list], n: int) -> str:
-    lines = [" | ".join(columns)] + [" | ".join("" if c is None else str(c) for c in r) for r in rows[:n]]
-    return "\n".join(lines)
+    """每列寫成「欄位=值」，避免模型把相鄰欄位的數字對錯（例如把缺口當成建議採購量）。"""
+    return "\n".join(f"第 {i} 列：" + "；".join(f"{c}={'-' if v is None else v}" for c, v in zip(columns, r))
+                     for i, r in enumerate(rows[:n], 1))
 
 
 def merge_both(question: str, s: _Sql, d: _Docs, deps: Deps) -> tuple[str, dict]:
@@ -239,7 +285,7 @@ def run_agent(question: str, history: list[dict] | None = None, session_id: str 
             fs, fd = ex.submit(run_sql, q, deps), ex.submit(run_docs, q, deps)
             s, d = fs.result(), fd.result()
     elif rt.kind == "sql":
-        s = run_sql(q, deps)
+        s = run_sql(q, deps, summarize=True)
     elif rt.kind == "docs":
         d = run_docs(q, deps)
 
