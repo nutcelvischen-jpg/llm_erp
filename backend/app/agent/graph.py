@@ -53,6 +53,7 @@ class AgentResult:
     warning: str | None = None
     error: str | None = None
     audit_id: int | None = None
+    params: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -304,6 +305,7 @@ def run_agent(question: str, history: list[dict] | None = None, session_id: str 
     if cat is not None and (rt.kind == "sql" or s.ok):
         res.mode, res.template_id, res.template_title = cat.mode, cat.template_id, cat.template_title
         res.params_readable, res.notes, res.answer_source = cat.params_readable, cat.notes, cat.answer_source
+        res.params = cat.params
         res.options, res.proposals, res.suggestions = cat.options, cat.proposals, cat.suggestions
         if s.ok:
             res.sql, res.binds, res.columns, res.rows, res.row_count = (cat.sql, cat.binds, cat.columns, cat.rows,

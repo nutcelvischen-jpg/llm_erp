@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>儀表板｜ERP 智慧助理</title>
+<link rel="stylesheet" href="/static/ui.css">
+<style>
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: var(--radius); padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 4px; box-shadow: 0 1px 3px rgba(20,30,50,.05); }
+  .tile.warn { border-left-color: #e9a23b; }
+  .tile.danger { border-left-color: var(--danger); }
+  .tile.ok { border-left-color: #2a9d8f; }
+  .tile h3 { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .tile .value { font-size: 26px; font-weight: 700; letter-spacing: .01em; font-variant-numeric: tabular-nums; line-height: 1.3; }
+  .tile .value small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .tile .sub { margin: 0; font-size: 13px; color: var(--muted); min-height: 2.6em; }
+  .tile .acts { display: flex; gap: 8px; margin-top: 6px; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .charts .wide { grid-column: 1 / -1; }
+  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+  .chart-card .chart { height: 290px; }
+  .errors { margin-bottom: 14px; }
+  .shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="titles">
+    <h1 id="brandName">ERP 智慧助理</h1>
+    <p id="brandTag"></p>
+  </div>
+  <nav class="topnav" id="topnav" aria-label="主選單"></nav>
+</header>
+
+<main class="page">
+  <div class="page-inner">
+    <div class="page-title">
+      <div>
+        <h2>營運儀表板</h2>
+        <p id="asOf">資料載入中…</p>
+      </div>
+      <button class="tool" id="reload" type="button">重新整理</button>
+    </div>
+    <div id="errors"></div>
+    <div class="tiles" id="tiles"><div class="loading"><div class="spinner"></div>查詢中…</div></div>
+    <div class="charts" id="charts"></div>
+
+    <div class="section" style="margin-top:14px">
+      <h3>常用報表</h3>
+      <div class="shortcuts" id="shortcuts"></div>
+    </div>
+  </div>
+</main>
+
+<script src="/static/vendor/echarts.min.js"></script>
+<script src="/static/ui.js"></script>
+<script>
+"use strict";
+applyBrand();
+const SHORTCUTS = [
+  ["客戶逾期發票明細", "ar_invoices", {}], ["欠款客戶清單", "ar_by_customer", { overdue_gt: 0 }], ["銷售排名", "sales_rank", {}],
+  ["營收趨勢", "sales_trend", { grain: "月", period: "last_n_months:12" }], ["呆滯庫存明細", "stock_dead", {}],
+  ["料號庫存查詢", "stock_lookup", {}], ["採購金額", "purchase_summary", { group: "供應商" }],
+];
+let charts = [];
+
+function valueText(t) {
+  if (t.value === null || t.value === undefined) return "-";
+  if (t.unit === "%") return Number(t.value).toFixed(1);
+  return Number(t.value).toLocaleString("zh-TW", { maximumFractionDigits: 0 });
+}
+
+function tile(t) {
+  return el("article", { class: `tile ${t.tone || ""}`, "data-key": t.key }, [
+    el("h3", { text: t.title }),
+    el("div", { class: "value" }, [document.createTextNode(valueText(t)), el("small", { text: t.unit })]),
+    el("p", { class: "sub", text: t.sub || "" }),
+    el("div", { class: "acts" }, [
+      el("a", { class: "act", href: reportUrl(t.report.template_id, t.report.params), text: "看明細" }),
+      el("a", { class: "act ghost", href: askUrl(t.ask), text: "用問的", title: t.ask }),
+    ]),
+  ]);
+}
+
+function chartCard(c, wide) {
+  const spec = chartSpec(c.columns, c.rows);
+  const box = el("div", { class: "chart", role: "img", "aria-label": c.title });
+  const card = el("section", { class: `section chart-card${wide ? " wide" : ""}`, "data-key": c.key }, [
+    el("div", { class: "section-h" }, [el("h3", { text: c.title }), el("a", { class: "tool", href: reportUrl(c.report.template_id, c.report.params), text: "開啟報表" })]),
+    spec ? box : buildTable(c.columns, c.rows, 20, c.rows.length),
+  ]);
+  if (spec) requestAnimationFrame(() => { const ch = drawChart(box, spec); if (ch) charts.push(ch); });
+  return card;
+}
+
+async function load() {
+  charts.forEach((c) => c.dispose()); charts = [];
+  $("tiles").replaceChildren(el("div", { class: "loading" }, [el("div", { class: "spinner" }), document.createTextNode("查詢中…")]));
+  $("charts").replaceChildren(); $("errors").replaceChildren();
+  try {
+    const res = await fetch("/api/dashboard");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    $("asOf").textContent = `資料日期 ${d.as_of}・每次開啟都即時查詢 ERP（${(d.latency_ms / 1000).toFixed(1)} 秒）・每個數字都來自公司既定的查詢程式，不經過 AI`;
+    $("tiles").replaceChildren(...d.tiles.map(tile));
+    $("charts").replaceChildren(...d.charts.map((c, i) => chartCard(c, i === 0)));
+    if (d.errors.length) $("errors").append(el("div", { class: "error", role: "alert", text: `部分項目查詢失敗：${d.errors.join("；")}` }));
+  } catch (e) {
+    $("tiles").replaceChildren(el("div", { class: "error", role: "alert", text: `儀表板載入失敗（${e.message}），請確認 make dev 與資料庫正在執行` }));
+  }
+}
+
+function $(id) { return document.getElementById(id); }
+$("shortcuts").replaceChildren(...SHORTCUTS.map(([label, t, p]) => el("a", { class: "act ghost", href: reportUrl(t, p), text: label })));
+$("reload").addEventListener("click", load);
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => charts.forEach((c) => c.resize()), 150); });
+load();
+</script>
+</body>
+</html>

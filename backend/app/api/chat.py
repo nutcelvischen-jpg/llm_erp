@@ -86,6 +86,7 @@ def chat(req: ChatRequest) -> dict:
         "template_id": r.template_id,
         "template_title": r.template_title,
         "params_readable": r.params_readable,
+        "params": r.params,
         "binds": r.binds,
         "answer_source": r.answer_source,
         "options": r.options,

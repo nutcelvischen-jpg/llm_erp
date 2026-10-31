@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .api import admin, chat
+from .api import admin, chat, reports
 from .config import settings
 from .jobs import scheduler
 
@@ -25,15 +25,35 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="ERP LLM PoC", lifespan=lifespan)
 app.include_router(chat.router)
 app.include_router(admin.router)
+app.include_router(reports.router)
 
 WEB_DIR = Path(__file__).parent / "web"
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
+def _page(name: str) -> FileResponse:
+    # no-store：開發時改了網頁，重新整理就會看到
+    return FileResponse(WEB_DIR / name, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/", include_in_schema=False)
 def index():
-    # no-store：開發時改了 index.html，重新整理就會看到
-    return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "no-store"})
+    return _page("index.html")
+
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard_page():
+    return _page("dashboard.html")
+
+
+@app.get("/reports", include_in_schema=False)
+def reports_page():
+    return _page("reports.html")
+
+
+@app.get("/about", include_in_schema=False)
+def about_page():
+    return _page("about.html")
 
 
 def _http_ok(url: str) -> bool:

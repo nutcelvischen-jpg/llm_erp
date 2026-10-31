@@ -7,6 +7,7 @@
 import json
 import sys
 from pathlib import Path
+from urllib.parse import urlencode
 
 from playwright.sync_api import sync_playwright
 
@@ -524,7 +525,9 @@ with sync_playwright() as p:
     nq = card.locator(".next-q").all_inner_texts()
     check(nq[0].startswith("依合約") and "台陽科技有哪些發票逾期？" not in nq, "接著問：顯示追問、問過的不再出現（忽略問號）")
     check(evil in nq and page.evaluate("window.__xss") is None, "接著問的惡意 HTML 原樣顯示為文字")
-    check(card.locator(".fb").count() == 2 and card.locator(".tool").all_inner_texts() == ["複製", "下載 CSV", "重新查詢"], "回答下方有複製、下載 CSV、重新查詢")
+    check(card.locator(".fb").count() == 2 and card.locator(".tool").all_inner_texts() == ["複製", "下載 CSV", "在報表中開啟", "重新查詢"],
+          "回答下方有複製、下載 CSV、在報表中開啟、重新查詢")
+    check(card.locator("a.tool").get_attribute("href").startswith("/reports?t=ar_invoices"), "「在報表中開啟」連到同一支程式")
     with page.expect_download() as dl:
         card.locator(".tool", has_text="下載 CSV").click()
     raw = Path(dl.value.path()).read_text(encoding="utf-8")
@@ -573,6 +576,112 @@ with sync_playwright() as p:
     page.keyboard.press("Escape")
     page.wait_for_timeout(300)
     check(page.locator("#sidebar").bounding_box()["x"] < 0, "Esc 關閉抽屜")
+    page.close()
+
+    # ================= 儀表板、報表、系統介紹（傳統介面）=================
+    def page_for(name, routes, width=1440):
+        pg = browser.new_page(viewport={"width": width, "height": 900})
+        body = (WEB / name).read_text(encoding="utf-8")
+        pg.route(BASE + name.removesuffix(".html") + "*", lambda r: r.fulfill(status=200, content_type="text/html; charset=utf-8", body=body))
+        pg.route("http://app.test/static/**", lambda r: r.fulfill(path=str(WEB / r.request.url.split("/static/")[1])))
+        for pattern, handler in routes.items():
+            pg.route(pattern, handler)
+        return pg
+
+    def json_route(payload, status=200):
+        return lambda r: r.fulfill(status=status, content_type="application/json", body=json.dumps(payload))
+
+    DASH = {"as_of": "2026-10-31", "latency_ms": 210, "errors": [], "tiles": [
+        {"key": "revenue", "title": "今年累計營收", "value": 83487889, "unit": "元", "sub": "去年同期 82,463,973 元，+1.2%", "tone": "ok",
+         "report": {"template_id": "sales_compare", "params": {"compare": "yoy_ytd"}}, "ask": "今年營收跟去年同期比如何？"},
+        {"key": "x", "title": evil, "value": 3, "unit": evil, "sub": evil, "tone": "danger",
+         "report": {"template_id": "stock_shortage", "params": {}}, "ask": evil}],
+        "charts": [{"key": "trend", "title": "營收趨勢", "columns": ["月份", "營收"], "rows": [["2026-09", 100], ["2026-10", 120]],
+                    "report": {"template_id": "sales_trend", "params": {"grain": "月"}}}]}
+    page = page_for("dashboard.html", {"**/api/dashboard": json_route(DASH)})
+    page.goto(BASE + "dashboard")
+    page.wait_for_selector(".tile")
+    check(page.locator(".tile").count() == 2 and page.locator(".tile .value").first.inner_text().startswith("83,487,889"), "儀表板指標卡與千分位")
+    check(page.locator(".topnav a[aria-current=page]").inner_text() == "儀表板" and page.locator(".topnav a").count() == 4, "導覽列標示目前頁面")
+    check(page.locator(".tile").first.locator("a", has_text="看明細").get_attribute("href").startswith("/reports?t=sales_compare")
+          and page.locator(".tile").first.locator("a", has_text="用問的").get_attribute("href").startswith("/?q="), "指標卡連到報表與問答")
+    page.wait_for_timeout(400)
+    check(page.locator(".chart-card .chart").count() == 1 and page.evaluate("window.__xss") is None and page.locator(".tile img").count() == 0,
+          "儀表板圖表與 XSS 防護")
+    page.close()
+    page = page_for("dashboard.html", {"**/api/dashboard": json_route({"detail": "x"}, 500)})
+    page.goto(BASE + "dashboard")
+    page.wait_for_selector(".error")
+    check("載入失敗" in page.locator(".error").inner_text(), "儀表板失敗提示")
+    page.close()
+
+    CAT = {"groups": [{"name": "應收帳款", "reports": [
+        {"id": "ar_invoices", "title": "客戶逾期發票明細", "description": "某一個客戶的逾期發票", "example": "台陽科技有哪些發票逾期",
+         "columns": ["發票號碼", "未收金額"], "params": [
+            {"name": "customer", "label": "客戶", "kind": "entity", "required": True, "default": None, "min": None, "max": None,
+             "options": [{"value": "台陽科技", "label": "台陽科技"}]},
+            {"name": "overdue_gt", "label": "逾期超過天數", "kind": "enum", "required": False, "default": 0, "min": 0, "max": 3650,
+             "options": [{"value": 0, "label": "已逾期"}, {"value": 60, "label": "逾期超過 60 天"}]}]},
+        {"id": "ar_aging", "title": evil, "description": evil, "example": "應收帳款的帳齡分佈", "columns": [], "params": []}]}]}
+    runs = []
+
+    def run_handler(route):
+        body = json.loads(route.request.post_data or "{}")
+        runs.append(body)
+        if not body["params"].get("customer") and body["template_id"] == "ar_invoices":
+            return route.fulfill(status=400, content_type="application/json", body=json.dumps({"detail": "請問要查哪個客戶？"}))
+        return route.fulfill(status=200, content_type="application/json", body=json.dumps({
+            "template_id": body["template_id"], "template_title": "客戶逾期發票明細", "params_readable": ["客戶：台陽科技", "逾期超過 60 天"],
+            "notes": [], "answer": "共 1 張，未收合計 100 元。", "columns": ["發票號碼", "未收金額"], "rows": [["INV-1", 100]], "row_count": 1,
+            "sql": "SELECT 1", "binds": {"customer": "台陽科技"}, "latency_ms": 30, "followups": ["依合約，台陽科技逾期多久我們可以暫停出貨？"]}))
+
+    page = page_for("reports.html", {"**/api/reports/catalog": json_route(CAT), "**/api/reports/run": run_handler}, width=1300)
+    page.goto(BASE + "reports")
+    page.wait_for_selector("#menu button")
+    check(page.locator("#menu h3").inner_text() == "應收帳款" and page.locator("#menu button").count() == 2, "報表選單分組")
+    check(page.evaluate("window.__xss") is None and page.locator("#menu img").count() == 0, "報表名稱的惡意 HTML 不會被執行")
+    page.locator("#menu button", has_text="客戶逾期發票明細").click()
+    check(page.locator("#f_customer").get_attribute("list") == "f_customer_list" and page.locator("#f_overdue_gt option").count() == 2, "條件表單：名稱可輸入篩選、下拉選項")
+    page.click("#form button[type=submit]")
+    page.wait_for_selector("#result .error")
+    check("哪個客戶" in page.locator("#result .error").inner_text(), "必填沒填時顯示後端訊息")
+    page.fill("#f_customer", "台陽科技")
+    page.select_option("#f_overdue_gt", label="逾期超過 60 天")
+    page.click("#form button[type=submit]")
+    page.wait_for_selector(".summary")
+    check(runs[-1]["params"] == {"customer": "台陽科技", "overdue_gt": 60} and runs[-1]["template_id"] == "ar_invoices", "送出的參數型別正確（數字不是字串）")
+    check("t=ar_invoices" in page.url and "%E5%8F%B0%E9%99%BD" in page.url, "網址記住報表與條件（可加書籤）")
+    check(page.locator("#result table tbody tr").count() == 1 and page.locator("#result .tag").count() == 2, "結果表格與條件標籤")
+    check(page.locator("#result .next a").get_attribute("href").startswith("/?q=") and page.locator("#result details summary").inner_text() == "查詢的 SQL",
+          "接著問連到問答、可展開 SQL")
+    page.close()
+    url = BASE + "reports?" + urlencode({"t": "ar_invoices", "p": json.dumps({"customer": "台陽科技", "overdue_gt": 60})})
+    page = page_for("reports.html", {"**/api/reports/catalog": json_route(CAT), "**/api/reports/run": run_handler}, width=1300)
+    n = len(runs)
+    page.goto(url)
+    page.wait_for_selector(".summary")
+    check(len(runs) == n + 1 and page.locator("#f_customer").input_value() == "台陽科技" and page.locator("#f_overdue_gt").input_value() == "60",
+          "從連結開啟：帶入條件並自動查詢")
+    page.close()
+
+    page = page_for("about.html", {"**/health": json_route({"postgres": True, "qdrant": False, "lmstudio": True, "lmstudio_loaded": [evil]}),
+                                   "**/api/reports/catalog": json_route(CAT), "**/api/docs": json_route({"groups": [{"name": "合約", "items": [evil]}], "total": 1})})
+    page.goto(BASE + "about")
+    page.wait_for_selector("#reports li")
+    page.wait_for_selector(".pill.bad")
+    check(page.locator(".pill").count() == 3 and "文件索引未連線" in page.locator(".pill.bad").inner_text(), "系統介紹：即時狀態")
+    check(page.locator("#reports li").count() == 2 and page.locator("#docs li").count() == 1, "系統介紹：報表與文件清單")
+    check(page.evaluate("window.__xss") is None and page.locator(".page img").count() == 0, "系統介紹的動態內容不會執行 HTML")
+    page.close()
+
+    # 問答頁：從其他頁「用問的」過來（/?q=）會自動送出並清掉網址參數
+    page = browser.new_page(viewport={"width": 1300, "height": 900})
+    page.route(BASE + "*", lambda r: r.fulfill(status=200, content_type="text/html; charset=utf-8", body=HTML))
+    page.route("http://app.test/static/**", lambda r: r.fulfill(path=str(WEB / r.request.url.split("/static/")[1])))
+    qreqs = mock(page, TPL)
+    page.goto(BASE + "?" + urlencode({"q": "台陽科技有哪些發票逾期"}))
+    page.wait_for_selector(".card.answer")
+    check(qreqs and qreqs[0]["question"] == "台陽科技有哪些發票逾期" and "?q=" not in page.url, "問答頁 ?q= 自動提問")
     page.close()
 
     browser.close()

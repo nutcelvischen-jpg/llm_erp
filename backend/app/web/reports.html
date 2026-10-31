@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>報表｜ERP 智慧助理</title>
+<link rel="stylesheet" href="/static/ui.css">
+<style>
+  .rp { flex: 1; display: flex; min-height: 0; }
+  .menu { flex: 0 0 236px; overflow-y: auto; padding: 14px 10px; background: #eef2f7; border-right: 1px solid var(--line); }
+  .menu h3 { margin: 12px 8px 4px; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+  .menu h3:first-child { margin-top: 0; }
+  .menu button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .menu button:hover { background: #e2e8f0; }
+  .menu button[aria-current="true"] { background: var(--brand-soft); color: var(--brand); font-weight: 650; }
+  .menu button:focus-visible { outline: 2px solid var(--brand); }
+  .rp .page-inner { max-width: 1080px; }
+  .desc { margin: -8px 0 14px; color: var(--muted); font-size: 14px; }
+  .form { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 170px; }
+  .field label { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .field label .req { color: var(--danger); margin-left: 2px; }
+  .field select, .field input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); min-width: 170px; }
+  .field select:focus, .field input:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
+  .run { padding: 8px 22px; font-size: 14px; }
+  .formfoot { display: flex; gap: 10px; align-items: center; margin-top: 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .summary { margin: 0 0 10px; font-weight: 600; font-size: 15px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .toolbar .meta { flex: 1; font-size: 12px; color: var(--muted); }
+  .next a { margin: 0 6px 6px 0; }
+  .welcome-r { text-align: center; color: var(--muted); padding: 60px 0; }
+  .welcome-r b { display: block; font-size: 18px; color: var(--ink); margin-bottom: 6px; }
+  @media (max-width: 820px) { .rp { flex-direction: column; } .menu { flex: none; max-height: 210px; border-right: none; border-bottom: 1px solid var(--line); } }
+  @media print { header, .menu, .form, .formfoot, .toolbar button, .toolbar a, .next, details { display: none !important; } .rp, .page { overflow: visible; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="titles">
+    <h1 id="brandName">ERP 智慧助理</h1>
+    <p id="brandTag"></p>
+  </div>
+  <nav class="topnav" id="topnav" aria-label="主選單"></nav>
+</header>
+
+<div class="rp">
+  <nav class="menu" id="menu" aria-label="報表清單"><div class="loading"><div class="spinner"></div>載入中…</div></nav>
+  <main class="page">
+    <div class="page-inner" id="main">
+      <div class="welcome-r"><b>從左邊選一張報表</b>選好條件按「查詢」。報表直接執行公司既定的查詢程式，不經過 AI。</div>
+    </div>
+  </main>
+</div>
+
+<script src="/static/vendor/echarts.min.js"></script>
+<script src="/static/ui.js"></script>
+<script>
+"use strict";
+applyBrand();
+const $ = (id) => document.getElementById(id);
+const sessionId = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+let catalog = null, current = null, charts = [];
+
+// 下拉選項的值用 JSON 字串保存，才能區分 null、數字與文字
+const enc = (v) => JSON.stringify(v === undefined ? null : v);
+const dec = (s) => { try { return JSON.parse(s); } catch { return s; } };
+
+function field(p, value) {
+  const id = `f_${p.name}`;
+  const label = el("label", { for: id }, [document.createTextNode(p.label), ...(p.required ? [el("span", { class: "req", text: "*" })] : [])]);
+  let input;
+  if (p.kind === "entity") {   // 名稱很多：可打字篩選的輸入框（後端會再比對名稱）
+    const listId = `${id}_list`;
+    input = el("input", { id, list: listId, placeholder: p.required ? "請選擇或輸入" : "全部", autocomplete: "off" });
+    input.value = value ?? "";
+    return el("div", { class: "field" }, [label, input, el("datalist", { id: listId }, p.options.map((o) => el("option", { value: o.value })))]);
+  }
+  if (p.kind === "int") {
+    input = el("input", { id, type: "number", ...(p.min !== null ? { min: String(p.min) } : {}), ...(p.max !== null ? { max: String(p.max) } : {}), placeholder: p.default === null ? "不限" : String(p.default) });
+    input.value = value ?? (p.default ?? "");
+    return el("div", { class: "field" }, [label, input]);
+  }
+  const opts = [...(p.required || p.default !== null || p.options.some((o) => o.value === null) ? [] : [{ value: null, label: "全部" }]), ...p.options];
+  input = el("select", { id }, opts.map((o) => el("option", { value: enc(o.value), text: o.label })));
+  input.value = enc(value === undefined ? p.default : value);
+  if (input.selectedIndex < 0) input.selectedIndex = 0;
+  return el("div", { class: "field" }, [label, input]);
+}
+
+function readForm(r) {
+  const params = {};
+  for (const p of r.params) {
+    const node = $(`f_${p.name}`);
+    if (!node) continue;
+    if (p.kind === "entity") params[p.name] = node.value.trim() || null;
+    else if (p.kind === "int") params[p.name] = node.value === "" ? null : Number(node.value);
+    else params[p.name] = dec(node.value);
+  }
+  return params;
+}
+
+function selectReport(id, preset = {}, autorun = false) {
+  const r = catalog.byId[id];
+  if (!r) return;
+  current = r;
+  document.querySelectorAll("#menu button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.id === id)));
+  document.title = `${r.title}｜報表｜${BRAND.name}`;
+  const run = el("button", { class: "act run", type: "submit", text: "查詢" });
+  const form = el("form", { class: "form", id: "form" }, [...r.params.map((p) => field(p, preset[p.name])), run]);
+  form.addEventListener("submit", (ev) => { ev.preventDefault(); runReport(); });
+  $("main").replaceChildren(
+    el("div", { class: "page-title" }, [el("h2", { text: r.title })]),
+    el("p", { class: "desc", text: r.description }),
+    el("section", { class: "section" }, [
+      r.params.length ? form : el("form", { class: "form", id: "form" }, [el("p", { class: "empty", text: "這張報表不需要設定條件。" }), run]),
+      el("div", { class: "formfoot" }, [document.createTextNode(`結果欄位：${r.columns.join("、") || "-"}`), el("span", { text: "｜" }),
+        el("a", { href: askUrl(r.example), text: `也可以用問的：「${r.example}」` })]),
+    ]),
+    el("div", { id: "result" }),
+  );
+  if (!r.params.length) $("form").addEventListener("submit", (ev) => { ev.preventDefault(); runReport(); });
+  if (autorun) runReport();
+}
+
+async function runReport() {
+  const r = current, params = readForm(r);
+  window.history.replaceState(null, "", reportUrl(r.id, Object.fromEntries(Object.entries(params).filter(([, v]) => v !== null))));
+  charts.forEach((c) => c.dispose()); charts = [];
+  const box = $("result");
+  box.replaceChildren(el("div", { class: "loading" }, [el("div", { class: "spinner" }), document.createTextNode("查詢中…")]));
+  document.querySelectorAll("#form button").forEach((b) => { b.disabled = true; });
+  try {
+    const res = await fetch("/api/reports/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ template_id: r.id, params, session_id: sessionId }) });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.detail || `伺服器回應錯誤（HTTP ${res.status}）`);
+    renderResult(d);
+  } catch (e) {
+    box.replaceChildren(el("div", { class: "error", role: "alert", text: e.message }));
+  } finally {
+    document.querySelectorAll("#form button").forEach((b) => { b.disabled = false; });
+  }
+}
+
+function renderResult(d) {
+  const box = $("result");
+  if (d.error) { box.replaceChildren(el("div", { class: "error", role: "alert", text: d.error })); return; }
+  const parts = [];
+  parts.push(el("div", { class: "badges" }, (d.params_readable || []).map((t) => el("span", { class: "tag", text: t }))));
+  if (d.notes?.length) parts.push(el("p", { class: "notes", text: d.notes.join("；") }));
+  parts.push(el("p", { class: "summary", text: d.answer }));
+  const spec = d.row_count ? chartSpec(d.columns, d.rows) : null;
+  if (spec) {
+    const div = el("div", { class: "chart", role: "img", "aria-label": "結果圖表" });
+    parts.push(el("section", { class: "section" }, [el("h3", { text: "圖表" }), div]));
+    requestAnimationFrame(() => { const c = drawChart(div, spec); if (c) charts.push(c); });
+  }
+  const tools = [el("span", { class: "meta", text: `共 ${d.row_count} 列・耗時 ${d.latency_ms < 100 ? "不到 0.1" : (d.latency_ms / 1000).toFixed(1)} 秒・資料日期 ${new Date().toLocaleDateString("zh-TW")}` })];
+  if (d.row_count) tools.push(csvButton(d, d.template_title, "tool"));
+  const print = el("button", { class: "tool", type: "button", text: "列印" });
+  print.addEventListener("click", () => window.print());
+  tools.push(print);
+  parts.push(el("section", { class: "section" }, [el("div", { class: "toolbar" }, tools),
+    d.row_count ? buildTable(d.columns, d.rows, 200, d.row_count) : el("p", { class: "empty", text: "查詢成功，但沒有符合條件的資料。" })]));
+  if (d.followups?.length) {
+    parts.push(el("section", { class: "section next" }, [el("h3", { text: "接著問（到問答頁，可以連同合約、規章一起查）" }),
+      el("div", {}, d.followups.map((q) => el("a", { class: "act ghost", href: askUrl(q), text: q })))]));
+  }
+  parts.push(el("section", { class: "section" }, [renderSql(sqlWithBinds(d), false)]));
+  box.replaceChildren(...parts);
+}
+
+async function init() {
+  try {
+    const res = await fetch("/api/reports/catalog");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    catalog = await res.json();
+  } catch (e) {
+    $("menu").replaceChildren(el("div", { class: "error", text: `報表清單載入失敗（${e.message}）` }));
+    return;
+  }
+  catalog.byId = {};
+  const items = [];
+  for (const g of catalog.groups) {
+    items.push(el("h3", { text: g.name }));
+    for (const r of g.reports) {
+      catalog.byId[r.id] = r;
+      const b = el("button", { type: "button", text: r.title, "data-id": r.id, title: r.description });
+      b.addEventListener("click", () => selectReport(r.id));
+      items.push(b);
+    }
+  }
+  $("menu").replaceChildren(...items);
+  const q = new URLSearchParams(location.search);
+  if (q.get("t") && catalog.byId[q.get("t")]) {
+    let preset = {};
+    try { preset = JSON.parse(q.get("p") || "{}") || {}; } catch { preset = {}; }
+    const r = catalog.byId[q.get("t")];
+    const ready = r.params.every((p) => !p.required || preset[p.name]);   // 必填都有值才自動查詢
+    selectReport(r.id, preset, ready);
+  }
+}
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => charts.forEach((c) => c.resize()), 150); });
+init();
+</script>
+</body>
+</html>

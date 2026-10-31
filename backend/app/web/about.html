@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>系統介紹｜ERP 智慧助理</title>
+<link rel="stylesheet" href="/static/ui.css">
+<style>
+  .about .page-inner { max-width: 1080px; }
+  .hero { background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 70%, #2a9d8f)); color: #fff; border-radius: 18px; padding: 34px 34px 28px; margin-bottom: 26px; }
+  .hero h2 { margin: 0 0 8px; font-size: 28px; letter-spacing: .01em; }
+  .hero p { margin: 0 0 18px; font-size: 16px; opacity: .92; max-width: 720px; }
+  .hero .cta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hero .cta a { background: #fff; color: var(--brand); border-radius: 10px; padding: 9px 18px; font-weight: 650; text-decoration: none; }
+  .hero .cta a.ghost { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.45); }
+  .status { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-size: 13px; }
+  .pill { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 3px 11px; }
+  .pill::before { content: "●"; margin-right: 6px; color: #9ae6b4; }
+  .pill.bad::before { color: #ffb4a8; }
+  .pill.wait::before { color: #ffe08a; }
+  h3.sec { font-size: 19px; margin: 30px 0 4px; }
+  p.lead { margin: 0 0 14px; color: var(--muted); }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .box h4 { margin: 0 0 6px; font-size: 16px; color: var(--brand); }
+  .box p { margin: 0 0 8px; font-size: 14px; }
+  .box .eg { font-size: 13px; color: var(--muted); border-left: 3px solid var(--brand-soft); padding-left: 8px; margin: 0; }
+  .box .num { display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: var(--brand); color: #fff; text-align: center; line-height: 26px; font-size: 13px; font-weight: 700; margin-right: 8px; }
+  .box a.go { font-size: 13px; }
+  .flow { display: grid; grid-template-columns: 1fr auto 1.15fr auto 1.4fr auto 1fr; align-items: center; gap: 8px; }
+  .flow .node { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; font-size: 13px; }
+  .flow .node b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .flow .node.ai { border-color: #e9a23b; background: #fffaf0; }
+  .flow .node.prog { border-color: var(--brand); background: var(--brand-soft); }
+  .flow .stack { display: flex; flex-direction: column; gap: 8px; }
+  .flow .arrow-r { color: var(--muted); font-size: 20px; }
+  @media (max-width: 860px) { .flow { grid-template-columns: 1fr; } .flow .arrow-r { transform: rotate(90deg); text-align: center; } }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend .l-ai::before { background: #fffaf0; border: 1px solid #e9a23b; }
+  .legend .l-prog::before { background: var(--brand-soft); border: 1px solid var(--brand); }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .checks li { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 40px; position: relative; font-size: 14px; }
+  .checks li::before { content: "✓"; position: absolute; left: 14px; top: 11px; color: #2a9d8f; font-weight: 800; }
+  .checks li b { display: block; }
+  .local { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .local .box { padding: 12px 14px; }
+  .local .box b { display: block; font-size: 14px; }
+  .local .box span { font-size: 12px; color: var(--muted); }
+  .cat h5 { margin: 0 0 6px; font-size: 14px; color: var(--muted); }
+  .cat ul { margin: 0; padding-left: 18px; font-size: 14px; }
+  .cat li { margin-bottom: 4px; }
+  .cat li a { font-weight: 600; }
+  .cat li span { color: var(--muted); font-size: 13px; }
+  .faq details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 0 0 8px; }
+  .faq summary { font-weight: 600; color: var(--ink); font-size: 15px; }
+  .faq details p { margin: 8px 0 0; font-size: 14px; }
+  .limits li { margin-bottom: 6px; font-size: 14px; }
+</style>
+</head>
+<body class="about">
+<header>
+  <div class="titles">
+    <h1 id="brandName">ERP 智慧助理</h1>
+    <p id="brandTag"></p>
+  </div>
+  <nav class="topnav" id="topnav" aria-label="主選單"></nav>
+</header>
+
+<main class="page">
+  <div class="page-inner">
+
+    <section class="hero">
+      <h2>用中文問 ERP 數字與公司文件，資料不出公司</h2>
+      <p>看營收、追應收、查庫存、翻合約與規章，不用再到不同系統找報表、問同事。可以像傳統 ERP 一樣點選報表，也可以直接用說的問；全部在公司這台電腦上執行。</p>
+      <div class="cta">
+        <a href="/dashboard">看儀表板</a>
+        <a href="/reports" class="ghost">查報表</a>
+        <a href="/" class="ghost">開始問答</a>
+      </div>
+      <div class="status" id="status"><span class="pill wait">檢查系統狀態中…</span></div>
+    </section>
+
+    <h3 class="sec">三種用法，選你習慣的</h3>
+    <p class="lead">三個入口查的是同一套資料、同一批查詢程式，數字完全一致。</p>
+    <div class="grid">
+      <div class="box"><h4>📊 儀表板</h4><p>打開就看到今年營收、逾期應收、呆滯庫存、缺料等重點指標與趨勢圖。點「看明細」進報表，點「用問的」直接追問。</p><p class="eg">適合：老闆、主管每天看一眼</p><a class="go" href="/dashboard">前往儀表板 →</a></div>
+      <div class="box"><h4>📋 報表</h4><p>像傳統 ERP：從選單挑報表，用下拉選單選客戶、期間、筆數，按「查詢」。可排序、下載 CSV、列印。完全不經過 AI。</p><p class="eg">適合：習慣 ERP 操作、要固定格式的同仁</p><a class="go" href="/reports">前往報表 →</a></div>
+      <div class="box"><h4>💬 問答</h4><p>用一句中文問，系統自己挑報表、填條件，還能同時查合約與規章，下結論並附證據。不確定時會先跟你確認。</p><p class="eg">適合：臨時想到的問題、要數字＋文件一起看</p><a class="go" href="/">開始問答 →</a></div>
+    </div>
+
+    <h3 class="sec">能做什麼</h3>
+    <p class="lead">四種能力，都附上可以核對的證據。</p>
+    <div class="grid">
+      <div class="box"><h4><span class="num">1</span>問 ERP 數字</h4><p>營收、毛利、同期比較、應收帳齡、呆滯與缺料、供應商準時率。結果有表格、圖表與查詢的 SQL。</p><p class="eg">「哪些客戶的應收逾期超過 60 天？金額多少？」</p></div>
+      <div class="box"><h4><span class="num">2</span>問合約、規章、規格書</h4><p>銷售與採購合約、人資規章、SOP、產品規格書。回答照原文引用，標出檔名、頁碼與條文。</p><p class="eg">「鴻遠機械的合約，延遲交貨罰款怎麼算？」</p></div>
+      <div class="box"><h4><span class="num">3</span>數字＋文件一起問</h4><p>一句話同時查 ERP 與合約，自己把兩邊兜起來下結論。</p><p class="eg">「台陽科技逾期的應收有多少？依合約可以暫停出貨了嗎？」</p></div>
+      <div class="box"><h4><span class="num">4</span>每週主動預警</h4><p>每週一早上 8 點自動整理呆滯庫存與缺料清單、建議採購量（可推播到 LINE）。</p><p class="eg">不用等人問，問題先送到你面前</p></div>
+    </div>
+
+    <h3 class="sec">怎麼運作</h3>
+    <p class="lead">AI 只負責「聽懂問題、挑程式、讀結果」；真正查資料的是公司寫好的固定程式。</p>
+    <div class="flow" aria-label="系統運作流程">
+      <div class="node"><b>你的問題</b>打字問，或在報表選條件</div>
+      <div class="arrow-r" aria-hidden="true">→</div>
+      <div class="node ai"><b>理解問題</b>判斷要查數字、文件或兩者，挑選查詢程式並填好條件</div>
+      <div class="arrow-r" aria-hidden="true">→</div>
+      <div class="stack">
+        <div class="node prog"><b>既定查詢程式（16 支）</b>寫死的 SQL、唯讀帳號、10 秒逾時 → ERP 資料庫</div>
+        <div class="node prog"><b>文件檢索</b>關鍵字＋語意混合搜尋，再精排 → 合約、規章、規格書</div>
+      </div>
+      <div class="arrow-r" aria-hidden="true">→</div>
+      <div class="node ai"><b>回答＋證據</b>結論、表格、圖表、SQL、文件頁碼；數字經過檢查</div>
+    </div>
+    <div class="legend"><span class="l-ai">AI（地端模型）</span><span class="l-prog">公司寫好的固定程式</span><span>報表與儀表板不經過 AI，直接執行固定程式</span></div>
+
+    <h3 class="sec">為什麼可以相信它的數字</h3>
+    <ul class="checks">
+      <li><b>AI 不寫 SQL</b>只能從 16 支公司寫好的查詢程式裡挑，條件也要通過白名單檢查。點開「查詢的 SQL」可以看到實際執行的內容與參數。</li>
+      <li><b>只能讀、不能改</b>用唯讀帳號，只看得到 4 個整理好的資料表（銷售、應收、庫存、採購），看不到薪資等其他資料，也不能新增、修改或刪除。</li>
+      <li><b>數字檢查</b>AI 寫的結論裡每個數字都必須出現在查詢結果中；檢查不過就改用固定句型，不會出現編造的數字。</li>
+      <li><b>文件附原文與頁碼</b>每句話標 [來源 n]，展開可看檔名、頁碼與原文片段；文件裡沒有就回答「查無」。</li>
+      <li><b>沒把握會先問你</b>名稱不明確會反問；找不到合適的程式會列出最接近的讓你選，按了才查。</li>
+      <li><b>全程留紀錄</b>每個問題、執行的程式、耗時與 👍／👎 回饋都寫入稽核紀錄，可以事後追查。</li>
+    </ul>
+
+    <h3 class="sec">資料不外流</h3>
+    <p class="lead">AI 模型、資料庫、文件索引都在這台電腦上執行，不呼叫任何雲端 AI 服務。</p>
+    <div class="local" id="local">
+      <div class="box"><b>AI 模型</b><span id="models">地端執行（LM Studio）</span></div>
+      <div class="box"><b>ERP 資料</b><span>PostgreSQL，唯讀帳號</span></div>
+      <div class="box"><b>文件索引</b><span>Qdrant 向量資料庫</span></div>
+      <div class="box"><b>網頁</b><span>只在公司內網，不使用外部 CDN</span></div>
+    </div>
+    <p class="note">唯一例外：若開啟 LINE 推播，每週預警的內容會經過 LINE 伺服器（目前未開啟）。</p>
+
+    <h3 class="sec">可以查什麼</h3>
+    <p class="lead" id="catLead">載入中…</p>
+    <div class="grid cat" id="reports"></div>
+    <h3 class="sec" style="font-size:16px">已收錄的文件</h3>
+    <div class="grid cat" id="docs"></div>
+
+    <h3 class="sec">使用小技巧</h3>
+    <div class="grid">
+      <div class="box"><h4>指名對象</h4><p>說出客戶、料號或供應商名稱，例如「台陽科技」「GEAR-M2-40T」，答案會更準。</p></div>
+      <div class="box"><h4>接著問</h4><p>每題答完下方會建議 2–3 個追問；也可以直接說「那去年呢？」，系統會記得前面在問什麼。</p></div>
+      <div class="box"><h4>不會問就點範例</h4><p>問答頁輸入框左邊的「💡 範例」依業務、財務、採購、文件分類，點了直接送出。</p></div>
+      <div class="box"><h4>想調條件就開報表</h4><p>問答的數字結果可以按「在報表中開啟」，到報表頁用下拉選單改條件。</p></div>
+    </div>
+
+    <h3 class="sec">目前的限制</h3>
+    <div class="box">
+      <ul class="limits">
+        <li>數字只能查 16 支既定程式涵蓋的範圍；其他問題會請你確認或婉拒，並記錄下來，之後評估新增程式。</li>
+        <li>文件需為有文字的 PDF（掃描檔需先轉文字）。新增文件後要重新匯入。</li>
+        <li>目前沒有登入與權限控管，只適合在內網、給授權同仁使用。</li>
+        <li>主模型同一時間處理一個問題，多人同時使用會排隊。</li>
+        <li>重要決策請以展開的 SQL 與原始資料為準。</li>
+      </ul>
+    </div>
+
+    <h3 class="sec">常見問題</h3>
+    <div class="faq">
+      <details><summary>AI 回答錯了怎麼辦？</summary><p>按 👎 會記錄下來；管理者可以在稽核紀錄看到當時執行的程式與結果。數字類問題可以點開 SQL 或到報表頁用同樣條件核對。</p></details>
+      <details><summary>可以用它修改 ERP 資料嗎？</summary><p>不行。系統使用唯讀帳號，只能查詢。</p></details>
+      <details><summary>想查的報表沒有怎麼辦？</summary><p>直接用問的。系統找不到合適的程式時會記錄這個問題，管理者定期整理後新增成新的查詢程式。</p></details>
+      <details><summary>對話紀錄存在哪裡？</summary><p>問答頁的對話紀錄只存在你這台電腦的瀏覽器，不會上傳；可以在左側欄刪除或清除全部。伺服器另有稽核紀錄（問題與執行的程式）。</p></details>
+      <details><summary>新的合約或規章怎麼加進來？</summary><p>把 PDF 放進文件資料夾後執行匯入（約 1 分鐘處理 20 份），就能查詢。</p></details>
+    </div>
+
+  </div>
+</main>
+
+<script src="/static/ui.js"></script>
+<script>
+"use strict";
+applyBrand();
+const $ = (id) => document.getElementById(id);
+
+async function getJson(url) { const r = await fetch(url); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
+
+async function loadStatus() {
+  try {
+    const h = await getJson("/health");
+    const pill = (ok, label) => el("span", { class: `pill${ok ? "" : " bad"}`, text: `${label}${ok ? "正常" : "未連線"}` });
+    $("status").replaceChildren(pill(h.postgres, "ERP 資料庫"), pill(h.qdrant, "文件索引"), pill(h.lmstudio, "AI 模型"));
+    if (h.lmstudio_loaded?.length) $("models").textContent = `地端執行：${h.lmstudio_loaded.join("、")}`;
+  } catch {
+    $("status").replaceChildren(el("span", { class: "pill bad", text: "無法取得系統狀態" }));
+  }
+}
+
+async function loadCatalog() {
+  try {
+    const c = await getJson("/api/reports/catalog");
+    const n = c.groups.reduce((s, g) => s + g.reports.length, 0);
+    $("catLead").textContent = `${n} 支既定查詢程式（點名稱直接開報表），以及下列公司文件。`;
+    $("reports").replaceChildren(...c.groups.map((g) => el("div", { class: "box" }, [el("h5", { text: g.name }),
+      el("ul", {}, g.reports.map((r) => el("li", {}, [el("a", { href: reportUrl(r.id), text: r.title }), el("br"), el("span", { text: r.description })])))])));
+  } catch (e) {
+    $("catLead").textContent = `清單載入失敗（${e.message}）`;
+  }
+  try {
+    const d = await getJson("/api/docs");
+    $("docs").replaceChildren(...d.groups.map((g) => el("div", { class: "box" }, [el("h5", { text: `${g.name}（${g.items.length}）` }),
+      el("ul", {}, g.items.map((x) => el("li", { text: x })))])));
+  } catch { /* 文件清單只是補充 */ }
+}
+
+loadStatus();
+loadCatalog();
+</script>
+</body>
+</html>

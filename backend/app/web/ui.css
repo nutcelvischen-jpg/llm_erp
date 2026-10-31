@@ -1,0 +1,92 @@
+/* 各頁共用樣式：色彩、標題列與導覽、卡片、表格、圖表、SQL、按鈕。問答頁另有自己的版面樣式。 */
+:root {
+    --brand: #0f4c81;
+    --brand-soft: color-mix(in srgb, var(--brand) 10%, #fff);
+    --ink: #1b2430;
+    --muted: #6b7686;
+    --line: #dde3ec;
+    --bg: #f4f6fa;
+    --card: #ffffff;
+    --danger: #b42318;
+    --danger-soft: #fdeceb;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  header { background: var(--brand); color: #fff; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+  header .titles { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  header h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .02em; }
+  header p { margin: 0; font-size: 13px; opacity: .85; }
+  .section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+  .section h3 { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; align-items: center; }
+  .badge { background: var(--brand); color: #fff; border-radius: 6px; padding: 2px 9px; font-size: 12px; font-weight: 600; }
+  .tag { background: var(--brand-soft); color: var(--brand); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .act { border: 1px solid var(--brand); background: var(--brand); color: #fff; border-radius: 8px; padding: 5px 14px;
+    font-size: 13px; font-weight: 600; cursor: pointer; }
+  .act.ghost { background: #fff; color: var(--brand); }
+  .act:disabled { opacity: .5; cursor: not-allowed; }
+  .empty { color: var(--muted); margin: 0; }
+  .table-box { overflow: auto; max-height: 380px; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 7px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: left; }
+  th { background: var(--brand-soft); color: var(--brand); font-weight: 650; position: sticky; top: 0; padding: 0; }
+  th button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 12px; cursor: pointer; text-align: inherit; }
+  th button:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+  th button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .arrow { display: inline-block; width: 1em; color: var(--brand); font-size: 11px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:nth-child(even) td { background: #fafbfd; }
+  tbody tr:last-child td { border-bottom: none; }
+  .note { margin: 8px 2px 0; font-size: 13px; color: var(--muted); }
+
+  .chart { width: 100%; height: 300px; }
+  details { margin-top: 12px; }
+  .section details { margin-top: 0; }
+  summary { cursor: pointer; color: var(--brand); font-size: 14px; user-select: none; }
+  .sql-box { position: relative; margin-top: 8px; }
+  .sql-box pre { padding-top: 40px; }  /* 留位置給右上角的「複製 SQL」，避免蓋住第一行 */
+  pre { margin: 0; padding: 14px 16px; background: #0f1b2d; color: #dbe7f7; border-radius: 10px;
+    overflow-x: auto; font: 13px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+  .copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }
+  .copy:hover { background: rgba(255,255,255,.22); }
+  .tool { border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 8px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+  .tool:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+  .tool:disabled { opacity: .5; cursor: not-allowed; }
+  .section-h { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; }
+  .section-h h3 { margin: 0; }
+  .error { background: var(--danger-soft); border: 1px solid #f3c1bd; color: var(--danger);
+    border-radius: 10px; padding: 12px 14px; font-weight: 600; word-break: break-word; }
+
+  .pending { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .skeleton { border-radius: 10px; margin-bottom: 14px; background: linear-gradient(90deg, #e9edf3 25%, #f6f8fb 37%, #e9edf3 63%); background-size: 400% 100%; animation: shimmer 1.3s ease infinite; }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+/* ---- 標題列導覽（四個頁面共用） ---- */
+.topnav { display: flex; gap: 4px; flex-wrap: wrap; }
+.topnav a { color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 9px; font-size: 14px; opacity: .85; white-space: nowrap; }
+.topnav a:hover { background: rgba(255,255,255,.14); opacity: 1; }
+.topnav a[aria-current="page"] { background: rgba(255,255,255,.2); opacity: 1; font-weight: 650; }
+@media (max-width: 1100px) { header p { display: none; } }
+
+/* ---- 非對話頁面的版面 ---- */
+.page { flex: 1; overflow-y: auto; }
+.page-inner { max-width: 1240px; margin: 0 auto; padding: 22px 22px 40px; }
+.page-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; }
+.page-title h2 { margin: 0; font-size: 22px; }
+.page-title p { margin: 0; color: var(--muted); font-size: 13px; }
+a.act, a.tool { text-decoration: none; display: inline-block; }
+.loading { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 30px 0; }
+.notes { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }
+a { color: var(--brand); }
+select, input { box-sizing: border-box; height: 36px; }

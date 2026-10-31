@@ -37,14 +37,25 @@ make ingest                # 20 份示範 PDF → Qdrant（約 1 分鐘，355 �
 make dev                   # http://localhost:8000
 ```
 
-### 3. Demo
+### 3. 四個頁面
+
+| 網址 | 頁面 | 給誰用 |
+|---|---|---|
+| `/dashboard` | **儀表板**：今年營收／毛利與去年同期、逾期應收、呆滯庫存、缺料、供應商準時率 7 張指標卡＋3 張圖；點「看明細」進報表、「用問的」到問答 | 老闆、主管每天看一眼 |
+| `/reports` | **報表**：16 支既定程式依銷售／應收／庫存／採購分類，下拉選單選條件後查詢；可排序、下載 CSV、列印；網址會記住條件（可加書籤）。**不經過 AI** | 習慣傳統 ERP 操作的同仁 |
+| `/` | **問答**：用中文問數字與文件；數字結果可「在報表中開啟」改條件 | 臨時問題、數字＋合約一起看 |
+| `/about` | **系統介紹**：能做什麼、怎麼運作、為什麼可信、資料不外流、可查的報表與文件清單、限制與常見問題，含即時系統狀態 | 第一次使用、Demo 開場 |
+
+三個入口執行的是同一批既定程式，數字一致。截圖：`docs/screenshots/page_*.png`。
+
+### 4. Demo
 - 開 http://localhost:8000，點 6 個範例問題。講稿、預期畫面與備援見 **`docs/DEMO_SCRIPT.md`**。
 - 連續追問的情境劇（圖表＋合約／規章＋兩者合併判斷）見 **`docs/DEMO_STORIES.md`**。
 - 網頁操作：左側欄（新對話、本次問題、對話紀錄）、輸入框旁「💡 範例」、每題下方「接著問」與複製／下載 CSV／重新查詢。
 - Demo 前先把 6 題預跑一次暖機（第一次查文件要載入 reranker，約 10 秒；之後 3–9 秒）。
 - 每週預警手動觸發：`curl -s -X POST localhost:8000/admin/jobs/dead_stock/run`
 
-### 4. 驗證
+### 5. 驗證
 ```bash
 curl -s localhost:8000/health        # "ok": true，且沒有 warnings
 make test                            # 單元測試（約 2 秒）
@@ -52,7 +63,7 @@ make test-db && make test-llm        # 需要 Docker 與 LM Studio
 make eval-sql                        # 數字查詢 30 題黃金題（既定程式；--engine ai 可比較 AI 寫 SQL）
 make eval-intent                     # 意圖辨識 40 題（模板 ≥95%、參數 ≥90%、不支援誤判 0）
 make eval-rag                        # RAG 30 題（命中 ≥85%、答案 ≥80%、拒答全對）
-uv run --with playwright python scripts/check_frontend.py   # 網頁 129 項瀏覽器檢查
+uv run --with playwright python scripts/check_frontend.py   # 網頁 148 項瀏覽器檢查
 ```
 
 ---
@@ -61,8 +72,9 @@ uv run --with playwright python scripts/check_frontend.py   # 網頁 129 項瀏�
 
 ```
 瀏覽器 ──▶ FastAPI :8000（host，不進 Docker）
-            │  GET /  單頁網頁（原生 HTML/JS，無外部 CDN）
-            │  POST /api/chat、/api/feedback；/admin/*
+            │  GET / 問答、/dashboard 儀表板、/reports 報表、/about 系統介紹（原生 HTML/JS，無外部 CDN）
+            │  POST /api/chat、/api/feedback；GET /api/dashboard、/api/reports/catalog、POST /api/reports/run；/admin/*
+            │  （儀表板與報表直接執行既定程式，不經過 LLM）
             ▼
         agent.run_agent
           ├─ router：LLM 分類 sql / docs / both / chat ＋ 關鍵字保底；依對話改寫問題

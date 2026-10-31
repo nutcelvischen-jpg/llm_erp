@@ -48,6 +48,7 @@ class CatalogAnswer:
     warning: str | None = None
     error: str | None = None
     latency_ms: int = 0
+    params: dict = field(default_factory=dict)      # 已驗證的參數（給網頁「在報表中開啟」）
 
 
 def jsonable(v):
@@ -123,7 +124,7 @@ def answer_question(question: str, today: date | None = None, choice: dict | Non
         return done(CatalogAnswer("no_match", answer=it.message, suggestions=_suggestions(it.candidates)))
 
     t = TEMPLATES[it.template_id]
-    base = CatalogAnswer("template", t.id, t.title, it.params_readable, notes=it.notes)
+    base = CatalogAnswer("template", t.id, t.title, it.params_readable, notes=it.notes, params=public_params(it.params))
     try:
         q = t.build(it.params)
         base.sql, base.binds = q.sql, public_params(q.binds)

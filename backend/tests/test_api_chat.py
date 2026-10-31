@@ -8,7 +8,8 @@ from backend.app.main import app
 client = TestClient(app)
 FIELDS = {"question", "sql", "explanation", "columns", "rows", "row_count", "attempts", "error", "latency_ms",
           "route", "sources", "audit_id", "answer", "markdown", "warning", "rewritten", "mode", "template_id",
-          "template_title", "params_readable", "binds", "answer_source", "options", "proposals", "suggestions", "notes"}
+          "template_title", "params_readable", "params", "binds", "answer_source", "options", "proposals", "suggestions",
+          "notes", "followups"}
 
 
 @pytest.fixture
