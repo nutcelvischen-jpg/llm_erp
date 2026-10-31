@@ -39,3 +39,9 @@
 - `data/docs/facts.yaml`：123 筆重點事實（檔名、頁碼、問題、答案），供 T20/T21 產生 RAG 測試題。
 - 與 TASKS.md 的差異：改用 Playwright/Chromium HTML→PDF（內嵌 Noto Sans CJK TC），不用 reportlab。
 - 注意：PDF 抽字會把部分中文轉成 Kangxi 部首字元（如「⼩」）、en dash 變 figure dash；比對與 T16 解析後的文字須先 NFKC 正規化並統一破折號。
+
+## T16 文件解析 ✅ （commit b5107f7）
+- `backend/app/rag/parse.py`：`parse_pdf()` 用 Docling（關閉 OCR、開表格結構）→ `Block(doc_id, file_name, page, heading_path, kind, text)`；轉換邏輯 `blocks_from_docling()` 不依賴 docling，可用假文件單測（5 項）。
+- 驗收：`pytest -m db backend/tests/test_rag_parse.py` 通過（鴻遠機械合約：有表格 Block、「0.3%」在第 2 頁，約 6.5 秒）。`scripts/parse_demo.py` 可檢視解析結果。
+- 實測：附件價格表、聯絡窗口各成獨立 table Block，標題（如「第十七條（其他）」「附件一 產品價格表」）正確帶入 heading_path。
+- 備註：同頁同標題下的簽署欄等短行會合併進同一個 text Block；T17 切塊時處理。
