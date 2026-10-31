@@ -9,7 +9,7 @@ import re
 from collections.abc import Iterable
 from numbers import Number
 
-_NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?\s*(萬|億)?")
+_NUM = re.compile(r"(?<![0-9A-Za-z_.,])(\d{1,3}(?:,\d{3})+(?!\d)|\d+)(\.\d+)?\s*(萬|億)?")  # 中文緊接數字也要抓到
 
 
 def extract_numbers(text: str) -> list[tuple[float, int, str]]:

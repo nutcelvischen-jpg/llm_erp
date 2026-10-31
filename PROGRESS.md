@@ -129,3 +129,18 @@
 - 驗收（對執行中的 `make dev`）：三個端點皆 HTTP 200。audit 回最近紀錄；ingest 202 → 狀態 done（20 份全部跳過、355 筆）；stats `{"questions": 2, "avg_latency_ms": 6469, "by_route": {"docs": 1, "sql": 1}, "sql_success_rate": 1.0}`（含測試紀錄時 27 題）；`path: "../"` 回 400。`make test` 325 passed、`make test-db` 65 passed。
 - 清理：T24 測試曾寫入 2 筆沒有 session_id 的測試紀錄（id 17、18，問題 q0／q1），已刪除，測試改帶 `pytest-` 前綴。
 - **注意：管理端點沒有驗證**。`make dev` 只綁 127.0.0.1；若要用 `--host 0.0.0.0` 給同網段的人看 Demo，任何人都能觸發重建索引、讀稽核紀錄。
+
+## T27 呆滯庫存與缺料預警 ✅
+- `backend/app/jobs/dead_stock.py`：`collect()`（唯讀角色查 `v_庫存狀況`，逾時 10 秒）→ `summarize()`（LLM 寫摘要）→ `compose()`（摘要＋完整明細）→ `run(dry_run=True) -> str`；`dry_run=False` 寫入 `app.notifications`（channel：有 LINE token 為 `line`，否則 `console`；`sent=false`，T29 推播後才改 true）。指令：`uv run python -m backend.app.jobs.dead_stock [--save]`。
+- 規則：呆滯 = `未異動天數 >= 180 AND 現有庫存 > 0`；缺料 = `現有庫存 + 在途數量 < 待出貨數量 OR 現有庫存 < 安全庫存`；缺口 = max(待出貨 − 現有 − 在途, 0)，建議採購量 = 缺口 + 安全庫存（規格公式）。
+- LLM 摘要的檢查：≤150 字（含【庫存預警 月/日】標題）、必須列出每個缺料料號、數字須能在資料中找到（numcheck）；任一不過 → 固定句型。
+- **與 TASKS.md 的差異（請確認）**：150 字放不下 12 個呆滯料號，而 BRG-6205-2RS 依金額只排第 7。為了不特別挑它（那是針對測試作弊），訊息 = LLM 的 ≤150 字摘要（呆滯項數、金額合計、金額最高料號、各缺料料號與建議採購量）＋程式附上的完整明細（全部呆滯料號、每個缺料的缺口／建議量／供應商／交期）。所以整則訊息超過 150 字；若要嚴格 150 字，就得只列前幾名（BRG-6205-2RS 會不在訊息裡）。
+- 修正 T23 的數字檢查 bug：數字緊接中文（「採購8,565」）時，正規式把中文當 `\w`，誤抓成「565」。改為只排除英數字元，並補測試。
+- 實際輸出（LLM 摘要通過檢查）：
+  ```
+  【庫存預警 10/31】呆滯12項合計345.3萬元，最高為CUS-008客製件008計204.4萬元。缺料3項：FST-M8x30-HEX建議採購8,565、GEAR-M2-40T建議採購762、BRG-6204-2RS建議採購585，請儘速處理採購以確保生產順暢。
+
+  呆滯料號（12）：CUS-008、CUS-015、GEAR-M2-50T、GEAR-M2-20T、BRG-6208-ZZ、GEAR-M2-30T、BRG-6205-2RS、WSH-M12-FL、FST-M5x30-HEX、FST-M10x20-HEX、FST-M6x40-HEX、FST-M6x30-HEX
+  缺料明細：FST-M8x30-HEX 缺 6,650，建議採購 8,565（順發五金，交期 10 天）；GEAR-M2-40T 缺 649，建議採購 762（精密熱處理，交期 28 天）；BRG-6204-2RS 缺 466，建議採購 585（永信金屬，交期 21 天）
+  ```
+- 驗收：`make test` 337 passed；`make test-llm` 25 passed（訊息含 BRG-6205-2RS 與 GEAR-M2-40T、摘要 ≤150 字）。
