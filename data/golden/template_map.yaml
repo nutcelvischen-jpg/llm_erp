@@ -1,0 +1,29 @@
+# T14 黃金題（data/golden/text2sql.yaml）的資料型 26 題 → 既定程式（模板）＋參數。
+# test_template_map.py 逐題執行模板，結果必須通過該題原本的檢查（rows_match／contains），
+# 證明模板與 AI 產生 SQL 的標準答案一致。婉拒題（Q27–Q30）不需要對照。
+- {id: Q01, template: sales_rank, params: {dimension: 客戶, metric: 營收, period: this_year, top_n: 5}}
+- {id: Q02, template: sales_total, params: {period: this_year}}
+- {id: Q03, template: sales_total, params: {period: this_month}}
+- {id: Q04, template: sales_total, params: {period: last_year}}
+- {id: Q05, template: sales_total, params: {period: this_year, customer: 華發實業}}
+- {id: Q06, template: sales_total, params: {period: last_year, customer: 鴻遠機械}}
+- {id: Q07, template: sales_rank, params: {dimension: 產品類別, metric: 毛利率, period: this_year, top_n: 50}}
+- {id: Q08, template: sales_rank, params: {dimension: 業務, metric: 營收, period: this_year, top_n: 1}}
+- {id: Q09, template: sales_trend, params: {grain: 月, period: this_year, order: desc, top_n: 1}}
+- {id: Q10, template: sales_rank, params: {dimension: 區域, metric: 營收占比, period: this_year, top_n: 50}}
+- {id: Q11, template: sales_largest_orders, params: {period: this_year, top_n: 1}}
+- {id: Q12, template: sales_rank, params: {dimension: 料號, metric: 數量, period: this_year, top_n: 3}}
+- {id: Q13, template: sales_total, params: {period: "quarter:last_year:3"}}
+- {id: Q14, template: ar_summary, params: {}}
+- {id: Q15, template: ar_summary, params: {overdue_gt: 30}}
+- {id: Q16, template: ar_summary, params: {customer: 台陽科技}}
+- {id: Q17, template: ar_summary, params: {customer: 精興金屬, overdue_gt: 0}}
+- {id: Q18, template: ar_by_customer, params: {overdue_gt: 0, top_n: 50}}
+- {id: Q19, template: ar_by_customer, params: {overdue_gt: 60, top_n: 50}}
+- {id: Q20, template: stock_rank, params: {metric: 庫存金額, top_n: 5}}
+- {id: Q21, template: stock_shortage, params: {}}
+- {id: Q22, template: stock_dead_total, params: {}}
+- {id: Q23, template: stock_lookup, params: {sku: BRG-6205-2RS}}
+- {id: Q24, template: supplier_ontime, params: {order: 最低, top_n: 1}}
+- {id: Q25, template: purchase_summary, params: {period: this_year, status: 全部有效}}
+- {id: Q26, template: purchase_summary, params: {period: all, status: 待交貨}}

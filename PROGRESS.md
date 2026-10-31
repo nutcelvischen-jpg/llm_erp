@@ -229,3 +229,15 @@
 - `sql_guard.validate()`：輸出前把 `%(name)s` 還原成 `:name`；補 3 個測試（綁定參數保留、LIKE 的 % 不受影響、常數 LIMIT 保留＋可選條件）。
 - 測試：`test_periods.py`（4 個 today 共 26 組起訖＋標籤、9 個不合法代碼、三種比較含閏年）、`test_entities.py`（完全相同、省略公司、唯一包含、錯字、不明確、查無、料號大小寫、快取）。
 - 驗收：`make test` 413 passed。
+
+## T14c 查詢模板（16 個）與黃金題對照 ✅
+- `backend/app/catalog/templates/`：`sales.py`（sales_rank、sales_total、sales_trend、sales_compare、sales_largest_orders）、`receivable.py`（ar_summary、ar_by_customer、ar_invoices、ar_aging）、`inventory.py`（stock_dead、stock_dead_total、stock_shortage、stock_lookup、stock_rank）、`purchasing.py`（supplier_ontime、purchase_summary）；`common.py` 共用工具；`registry.py` 的 `TEMPLATES`。
+- 規則落實：值一律 `:name` 綁定；維度／指標／排序／狀態只從白名單對照表取（不在表中丟 ValueError）；`top_n` 夾值後寫成常數；可選條件用 `CAST(:x AS TEXT) IS NULL OR …`；每句都經 `guarded()` → `sql_guard.validate`。
+- 與規格的差異／補充：
+  - 每個模板多一個 `columns(params)`，回傳結果欄位，供「沒明確命中時讓使用者確認」的預覽用（Elvis 的需求）。
+  - `sales_compare` 依客戶等維度比較時，第一列固定是「（全公司）」，可同時回答「整體跟去年比怎樣、哪個客戶掉最多」（Demo 第 1 題）。
+  - `ar_aging` 除了 1–30／31–60／61 天以上，多一列「未到期」與占比。
+  - `stock_shortage` 的缺口與建議採購量公式與每週預警（T27）相同。
+- `data/golden/template_map.yaml`：T14 的 26 題資料型問題 → 模板＋參數（照 TASKS 的對照）。
+- 測試 `backend/tests/test_templates.py`：16 個模板結構（≥5 句 examples、enum 預設在白名單內）；每個 enum 標準值的組合都通過守門員且綁定參數齊全；含單引號／分號／DROP 的參數只出現在 binds；不合法 enum／期間丟錯、top_n 夾值、缺必填；facts／summary 以範例資料與空結果都產生不含 None 的句子；`db`：16 個模板預設參數在真實資料庫有結果且欄位與預覽一致；**26 題對照全部通過原本的 rows_match／contains**。
+- 驗收：`make test` 452 passed；`make test-db` 84 passed。
