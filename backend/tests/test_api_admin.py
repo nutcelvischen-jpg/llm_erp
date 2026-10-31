@@ -84,8 +84,9 @@ def test_compute_stats():
 def test_stats_real_db():
     from backend.app import audit
 
-    audit.write(audit.AuditRecord(question="統計測試", session_id="pytest-stats", route="sql", sql_ok=True,
-                                  latency_ms=1000))
+    for _ in range(5):  # 自己寫足 5 筆，不依賴資料庫原有的紀錄（從零重建後可能不夠）
+        audit.write(audit.AuditRecord(question="統計測試", session_id="pytest-stats", route="sql", sql_ok=True,
+                                      latency_ms=1000))
     with_tests = client.get("/admin/stats?include_tests=true").json()
     without = client.get("/admin/stats").json()
     assert with_tests["questions"] >= 1 and with_tests["by_route"].get("sql", 0) >= 1
