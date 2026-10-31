@@ -45,3 +45,8 @@
 - 驗收：`pytest -m db backend/tests/test_rag_parse.py` 通過（鴻遠機械合約：有表格 Block、「0.3%」在第 2 頁，約 6.5 秒）。`scripts/parse_demo.py` 可檢視解析結果。
 - 實測：附件價格表、聯絡窗口各成獨立 table Block，標題（如「第十七條（其他）」「附件一 產品價格表」）正確帶入 heading_path。
 - 備註：同頁同標題下的簽署欄等短行會合併進同一個 text Block；T17 切塊時處理。
+
+## T17 切塊 ✅ （commit 7893782）
+- `backend/app/rag/chunk.py`：`chunk_blocks()`（文字約 600 字、重疊 80；表格整張一塊，>1500 字按列切並重複表頭；前綴 `【檔名 › 標題路徑】`；`doc_type` 由檔名前綴判斷）。`make test` 242 passed。
+- 實測 20 份 PDF → **355 塊**（表格 110 塊）；字數 min/median/max = 48/147/803；解析加切塊共 34 秒。T18 驗收門檻（>200）足夠。
+- 與 TASKS.md 的差異：不跨 Block 合併（Block 已按標題與頁分隔，頁碼引用才準）；只略超過目標長度（≤680 字）的文字不切。
