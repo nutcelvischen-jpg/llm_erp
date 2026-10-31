@@ -4,7 +4,7 @@
 
 - 每個劇本 2–4 題、約 2–3 分鐘，挑 2–3 個演即可。**同一個劇本要在同一個對話裡依序問**（後面的問題會用到前面的脈絡）；換劇本前重新整理網頁。
 - 數字是 2026-10-31 實測值，重新 seed 後金額會變，劇情不變。截圖在 `docs/screenshots/story*.png`。
-- Demo 前可以一次跑完全部劇本確認答案與耗時：`uv run --with playwright python scripts/demo_stories.py <輸出資料夾>`（要先 `make dev`）。
+- Demo 前可以一次跑完全部劇本確認答案與耗時（順便暖機）：`uv run --with playwright python scripts/demo_stories.py`（要先 `make dev`；只跑部分可加編號，例如 `... demo_stories.py 1 3`；截圖存到 `data/demo_shots/`）。
 - 實測每題 2–7 秒（第一次查文件約 10 秒，記得先暖機）。
 
 | # | 劇本 | 對象 | 亮點 |

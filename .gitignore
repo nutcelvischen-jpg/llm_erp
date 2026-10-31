@@ -9,3 +9,4 @@ data/seed/*.csv
 models/
 *.egg-info/
 data/seed/out/
+data/demo_shots/
