@@ -342,6 +342,60 @@ with sync_playwright() as p:
     check(reqs[0]["session_id"] and reqs[0]["history"] == [], "第一題送出 session_id 與空的 history")
     shot(page, "9_docs_sources")
 
+    # ---- 原文預覽：外框＋螢光、整頁檢視、翻頁、下載原檔
+    PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+                        "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")
+    VIEW = {"ratio": 1.4144, "pages": 5, "boxes": [
+        {"kind": "region", "x": 0.095, "y": 0.1527, "w": 0.8117, "h": 0.1366},
+        {"kind": "hit", "x": 0.0953, "y": 0.1833, "w": 0.81, "h": 0.0119},
+        {"kind": "hit", "x": 0.0949, "y": 0.2056, "w": 0.2681, "h": 0.0116}]}
+    pv = fresh(browser, 1300)
+    imgs = []
+    pv.route("**/api/docs/page?**", lambda r: imgs.append(r.request.url) or r.fulfill(status=200, content_type="image/png", body=PNG))
+    mock(pv, answer(route="docs", answer="每逾一日 0.3% [來源 1]", audit_id=21,
+                    sources=[{**SRC[0], "view": VIEW}, {**SRC[1], "view": None}]))
+    pv.fill("#input", "鴻遠罰款")
+    pv.press("#input", "Enter")
+    pv.wait_for_selector(".panel .sources .crop")
+    src = pv.locator(".panel .sources li")
+    check(src.first.locator(".mark.region").count() == 1 and src.first.locator(".mark.hit").count() == 2, "來源直接顯示原文預覽：外框一個、螢光兩行")
+    check(src.first.locator(".mark.region").evaluate("n => n.style.left") == "9.5%", "外框位置依比例座標")
+    check(src.first.locator(".src-snippet").count() == 0, "有預覽時不再重複顯示文字片段")
+    check(src.nth(1).locator(".crop").count() == 0 and src.nth(1).locator(".src-snippet").count() == 1
+          and src.nth(1).locator(".src-acts .tool").inner_text() == "看第 3 頁原文", "找不到位置時顯示片段與看原文按鈕")
+    pv.wait_for_function("document.querySelector('.panel .crop img').complete")
+    check(any("file=%E9%8A%B7%E5%94%AE%E5%90%88%E7%B4%84_%E9%B4%BB%E9%81%A0%E6%A9%9F%E6%A2%B0.pdf&page=2" in u for u in imgs), "預覽圖網址帶檔名與頁碼（有編碼）")
+    shot(pv, "9b_source_preview")
+    src.first.locator(".crop").click()
+    dlg = pv.locator("dialog.viewer")
+    check(dlg.evaluate("d => d.open") and "第 2 頁 / 共 5 頁" in dlg.locator(".pno").inner_text(), "點預覽開啟整頁檢視")
+    check(dlg.locator(".mark.region").count() == 1 and dlg.locator(".mark.hit").count() == 2 and dlg.locator(".viewer-legend").count() == 1, "整頁檢視保留外框、螢光與圖例")
+    check(dlg.locator("a.tool").get_attribute("href") == "/api/docs/file?name=" + "%E9%8A%B7%E5%94%AE%E5%90%88%E7%B4%84_%E9%B4%BB%E9%81%A0%E6%A9%9F%E6%A2%B0.pdf", "可開啟原始 PDF")
+    check(dlg.get_by_role("button", name="回到引用處（第 2 頁）").is_hidden(), "在引用頁時不顯示回到引用處")
+    shot(pv, "9c_source_viewer")
+    dlg.get_by_role("button", name="下一頁 ›").click()
+    check("第 3 頁 / 共 5 頁" in dlg.locator(".pno").inner_text() and dlg.locator(".mark").count() == 0, "翻到別頁不顯示螢光")
+    for _ in range(2):
+        dlg.get_by_role("button", name="下一頁 ›").click()
+    check(dlg.get_by_role("button", name="下一頁 ›").is_disabled(), "最後一頁停用下一頁")
+    dlg.get_by_role("button", name="回到引用處（第 2 頁）").click()
+    check("第 2 頁" in dlg.locator(".pno").inner_text() and dlg.locator(".mark.hit").count() == 2, "回到引用處恢復螢光")
+    pv.keyboard.press("Escape")
+    check(not dlg.evaluate("d => d.open"), "Esc 關閉整頁檢視")
+    src.nth(1).locator(".src-acts .tool").click()
+    check(dlg.evaluate("d => d.open") and "第 3 頁" in dlg.locator(".pno").inner_text() and dlg.locator(".viewer-legend").count() == 0, "沒有定位資料也能看整頁")
+    dlg.get_by_role("button", name="關閉").click()
+    check(not dlg.evaluate("d => d.open"), "關閉按鈕")
+    evil_name = '<img src=x onerror="window.__pwned=1">.pdf'
+    pv.unroute("**/api/chat")
+    mock(pv, answer(route="docs", answer="x [來源 1]", sources=[{"file_name": evil_name, "page": 1, "heading": "", "snippet": "s", "view": VIEW}]))
+    pv.fill("#input", "再問")
+    pv.press("#input", "Enter")
+    pv.wait_for_function("document.querySelectorAll('.panel .sources .crop').length === 1 && document.querySelector('.panel .src-title').textContent.includes('onerror')")
+    pv.locator(".panel .sources .crop").click()
+    check(dlg.locator("b").inner_text() == evil_name and pv.evaluate("window.__pwned") is None, "檢視器檔名以文字顯示")
+    pv.close()
+
     card.locator(".fb").nth(1).click()
     page.wait_for_function("document.querySelector('.card.answer:last-child .fb-status')?.textContent === '已記錄回饋'")
     check(fb == [{"audit_id": 11, "score": -1}], "👎 呼叫 /api/feedback")

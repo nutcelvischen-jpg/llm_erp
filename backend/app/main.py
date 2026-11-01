@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .api import admin, chat, reports
+from .api import admin, chat, docview, reports
 from .config import settings
 from .jobs import scheduler
 
@@ -26,6 +26,7 @@ app = FastAPI(title="ERP LLM PoC", lifespan=lifespan)
 app.include_router(chat.router)
 app.include_router(admin.router)
 app.include_router(reports.router)
+app.include_router(docview.router)
 
 WEB_DIR = Path(__file__).parent / "web"
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")

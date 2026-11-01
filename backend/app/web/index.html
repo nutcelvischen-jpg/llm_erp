@@ -82,6 +82,30 @@
   .sources ol { margin: 8px 0 0; padding-left: 22px; }
   .sources li { margin-bottom: 8px; }
   .src-title { font-weight: 600; }
+  .src-acts { display: flex; gap: 6px; margin: 6px 0 2px; flex-wrap: wrap; }
+  /* 原文預覽：頁面圖片＋外框（整段條文）＋螢光（回答用到的句子），座標用百分比疊上去 */
+  .pg { position: relative; background: #fff; }
+  .pg img { display: block; width: 100%; height: 100%; }
+  .pg .mark { position: absolute; pointer-events: none; }
+  .pg .mark.region { outline: 2px solid #e8590c; outline-offset: 5px; border-radius: 2px; }
+  .pg .mark.hit { background: rgba(255, 214, 0, .45); mix-blend-mode: multiply; border-radius: 2px; margin: -1px -2px; padding: 1px 2px; }
+  .crop { all: unset; box-sizing: border-box; display: block; position: relative; overflow: hidden; width: 100%; cursor: zoom-in;
+    border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; background: #fff; }
+  .crop:hover { border-color: #b9c6d8; }
+  .crop:focus-visible { outline: 2px solid var(--brand); }
+  .crop .pg { position: absolute; }
+  .crop-hint { position: absolute; right: 8px; bottom: 6px; font-size: 12px; background: rgba(27,36,48,.72); color: #fff; padding: 2px 8px; border-radius: 999px; }
+  dialog.viewer { width: min(900px, 96vw); height: 94vh; max-height: 94vh; padding: 0; border: none; border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  dialog.viewer::backdrop { background: rgba(15,23,35,.55); }
+  .viewer-in { display: flex; flex-direction: column; height: 100%; }
+  .viewer-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .viewer-h b { flex: 1; min-width: 12em; font-size: 15px; }
+  .viewer-h .pno { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .viewer-legend { font-size: 12px; color: var(--muted); padding: 6px 14px 0; }
+  .viewer-legend i { display: inline-block; width: 18px; height: 10px; vertical-align: -1px; margin: 0 4px 0 10px; border-radius: 2px; }
+  .viewer-body { flex: 1; overflow: auto; background: #e9edf3; padding: 16px; }
+  .viewer-body .pg { margin: 0 auto; max-width: 820px; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+  .viewer-body .pg-error { text-align: center; color: var(--muted); padding: 40px 0; }
   .fb-status { font-size: 12px; color: var(--muted); }
   .notes { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }
   .choices { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -218,11 +242,91 @@ applyBrand();
 
 const isWide = () => wideQuery.matches;
 const scrollDown = () => { chatBox.scrollTop = chatBox.scrollHeight; };
+// ---------------------------------------------------------------- 文件原文預覽
+const docPageUrl = (file, page) => `/api/docs/page?file=${encodeURIComponent(file)}&page=${page}`;
+const docFileUrl = (file) => `/api/docs/file?name=${encodeURIComponent(file)}`;
+const pct = (v) => `${(v * 100).toFixed(3)}%`;
+const regionOf = (view) => view?.boxes?.find((b) => b.kind === "region") || null;
+
+function pageLayer(file, page, boxes = [], lazy = true, ratio = null) {   // 頁面圖片＋外框／螢光
+  const img = el("img", { src: docPageUrl(file, page), alt: `${file} 第 ${page} 頁`, decoding: "async", ...(lazy ? { loading: "lazy" } : {}) });
+  const marks = boxes.map((b) => {
+    const m = el("div", { class: `mark ${b.kind}` });
+    Object.assign(m.style, { left: pct(b.x), top: pct(b.y), width: pct(b.w), height: pct(b.h) });
+    return m;
+  });
+  const layer = el("div", { class: "pg" }, [img, ...marks]);
+  if (ratio) layer.style.aspectRatio = `1 / ${ratio}`;   // 圖片還沒載入就先撐出高度，畫面不跳動
+  return layer;
+}
+
+function cropPreview(x) {   // 只露出被引用的那一段（外框上下留一點邊），點了看整頁
+  const r = regionOf(x.view), ratio = x.view.ratio;
+  const top = Math.max(0, r.y - 0.025), height = Math.min(r.h + 0.05, 0.42, 1 - top);
+  const left = Math.max(0, r.x - 0.03), width = Math.min(r.w + 0.06, 1 - left);
+  const pg = pageLayer(x.file_name, x.page, x.view.boxes);
+  Object.assign(pg.style, { width: pct(1 / width), height: pct(1 / height), left: pct(-left / width), top: pct(-top / height) });
+  const btn = el("button", { class: "crop", type: "button", "aria-label": `放大看 ${x.file_name} 第 ${x.page} 頁` }, [pg, el("span", { class: "crop-hint", text: "點一下看整頁" })]);
+  btn.style.aspectRatio = `${width} / ${height * ratio}`;
+  btn.addEventListener("click", () => openViewer(x));
+  return btn;
+}
+
+let viewer = null;
+function openViewer(x) {
+  if (!viewer) {
+    viewer = el("dialog", { class: "viewer", "aria-label": "文件原文" });
+    viewer.addEventListener("click", (ev) => { if (ev.target === viewer) viewer.close(); });   // 點背景關閉
+    document.body.append(viewer);
+  }
+  const total = x.view?.pages || null;
+  let page = x.page;
+  const title = el("b", { text: x.file_name });
+  const pno = el("span", { class: "pno" });
+  const prev = el("button", { class: "tool", type: "button", text: "‹ 上一頁" });
+  const next = el("button", { class: "tool", type: "button", text: "下一頁 ›" });
+  const back = el("button", { class: "tool", type: "button", text: `回到引用處（第 ${x.page} 頁）` });
+  const close = el("button", { class: "tool", type: "button", text: "關閉" });
+  const pdf = el("a", { class: "tool", href: docFileUrl(x.file_name), target: "_blank", rel: "noopener", text: "開啟原始 PDF" });
+  const body = el("div", { class: "viewer-body" });
+  const legend = regionOf(x.view) ? el("div", { class: "viewer-legend" }, [document.createTextNode("圖例："),
+    el("i", { style: "outline:2px solid #e8590c" }), document.createTextNode("引用的段落"),
+    el("i", { style: "background:rgba(255,214,0,.6)" }), document.createTextNode("回答用到的句子")]) : null;
+
+  function show() {
+    const here = page === x.page;
+    pno.textContent = `第 ${page} 頁${total ? ` / 共 ${total} 頁` : ""}`;
+    prev.disabled = page <= 1;
+    next.disabled = total !== null && page >= total;
+    back.hidden = here;
+    const layer = pageLayer(x.file_name, page, here ? x.view?.boxes || [] : [], false, x.view?.ratio);
+    const img = layer.querySelector("img");
+    img.addEventListener("error", () => body.replaceChildren(el("p", { class: "pg-error", text: "這一頁載入失敗（可能已經是最後一頁）。" })));
+    const r = here ? regionOf(x.view) : null;
+    img.addEventListener("load", () => { body.scrollTop = r ? Math.max(0, r.y * layer.offsetHeight - 60) : 0; });
+    body.replaceChildren(layer);
+  }
+  prev.addEventListener("click", () => { page -= 1; show(); });
+  next.addEventListener("click", () => { page += 1; show(); });
+  back.addEventListener("click", () => { page = x.page; show(); });
+  close.addEventListener("click", () => viewer.close());
+  viewer.replaceChildren(el("div", { class: "viewer-in" }, [
+    el("div", { class: "viewer-h" }, [title, pno, prev, next, back, pdf, close]), ...(legend ? [legend] : []), body]));
+  show();
+  viewer.showModal();
+}
+
 function buildSources(sources, open) {
-  const items = sources.map((x) => el("li", {}, [
-    el("span", { class: "src-title", text: `${x.file_name} 第 ${x.page} 頁${x.heading ? " › " + x.heading : ""}` }),
-    el("span", { class: "src-snippet", text: x.snippet || "" }),
-  ]));
+  const items = sources.map((x) => {
+    const located = Boolean(regionOf(x.view));
+    const look = el("button", { class: "tool", type: "button", text: located ? "看整頁" : `看第 ${x.page} 頁原文` });
+    look.addEventListener("click", () => openViewer(x));
+    return el("li", {}, [
+      el("span", { class: "src-title", text: `${x.file_name} 第 ${x.page} 頁${x.heading ? " › " + x.heading : ""}` }),
+      ...(located ? [cropPreview(x)] : [el("span", { class: "src-snippet", text: x.snippet || "" })]),
+      el("div", { class: "src-acts" }, [look]),
+    ]);
+  });
   const d = el("details", { class: "sources" }, [el("summary", { text: `文件來源（${sources.length}）` }), el("ol", {}, items)]);
   if (open) d.setAttribute("open", "");
   d.addEventListener("click", (e) => e.stopPropagation());

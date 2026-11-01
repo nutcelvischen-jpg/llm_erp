@@ -63,7 +63,7 @@ make test-db && make test-llm        # 需要 Docker 與 LM Studio
 make eval-sql                        # 數字查詢 30 題黃金題（既定程式；--engine ai 可比較 AI 寫 SQL）
 make eval-intent                     # 意圖辨識 40 題（模板 ≥95%、參數 ≥90%、不支援誤判 0）
 make eval-rag                        # RAG 30 題（命中 ≥85%、答案 ≥80%、拒答全對）
-uv run --with playwright python scripts/check_frontend.py   # 網頁 148 項瀏覽器檢查
+uv run --with playwright python scripts/check_frontend.py   # 網頁 164 項瀏覽器檢查
 ```
 
 ---

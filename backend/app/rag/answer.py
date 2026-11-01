@@ -25,6 +25,7 @@ class Source:
     page: int
     heading: str
     snippet: str
+    view: dict | None = None   # 原文預覽：頁面比例與外框／螢光位置（pdfview.locate），找不到為 None
 
 
 @dataclass
@@ -110,7 +111,8 @@ def _default_chat(messages: list[dict]):
     return llm.chat(messages, temperature=0.1, max_tokens=MAX_TOKENS)
 
 
-def answer(question: str, hits: list[Hit], *, chat: Callable | None = None) -> RagAnswer:
+def answer(question: str, hits: list[Hit], *, chat: Callable | None = None,
+           locate: Callable | None = None) -> RagAnswer:
     if not hits:
         return RagAnswer(NO_ANSWER)
     chat = chat or _default_chat
@@ -122,4 +124,27 @@ def answer(question: str, hits: list[Hit], *, chat: Callable | None = None) -> R
                          error=str(e))
     text = drop_trailing_refusal((res.text or "").strip()) or NO_ANSWER
     text, sources = attach_sources(text, hits)
+    add_views(sources, hits, text, locate)
     return RagAnswer(text, sources, res.prompt_tokens, res.completion_tokens, res.latency_ms)
+
+
+def _default_locate(file_name: str, page: int, body: str, heading: str, answer_text: str) -> dict | None:
+    from . import pdfview
+
+    return pdfview.locate(file_name, page, body, heading, answer_text)
+
+
+def add_views(sources: list[Source], hits: list[Hit], answer_text: str, locate: Callable | None = None) -> None:
+    """替每個來源找出它在 PDF 頁面上的位置；失敗只記 log，回答照常。"""
+    locate = locate or _default_locate
+    by_key = {}
+    for h in hits:
+        by_key.setdefault((h.file_name, h.page, to_source(h).snippet), h)
+    for s in sources:
+        h = by_key.get((s.file_name, s.page, s.snippet))
+        if not h:
+            continue
+        try:
+            s.view = locate(h.file_name, h.page, body_of(h), h.heading_path[-1] if h.heading_path else "", answer_text)
+        except Exception as e:  # noqa: BLE001
+            log.warning("原文定位失敗 %s 第 %s 頁：%s", h.file_name, h.page, e)

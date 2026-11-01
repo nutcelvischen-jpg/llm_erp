@@ -323,3 +323,11 @@
 ## 首頁改成儀表板（2026-11-01）✅
 - `/` 改為儀表板（`/dashboard` 保留為同頁），問答頁移到 `/chat`；舊的 `/?q=問題` 連結 307 轉到 `/chat?q=問題`。導覽列、「用問的」連結、系統介紹頁、`scripts/demo_stories.py`（改開 `/chat`）、README、AGENTS、Demo 講稿與劇本同步更新。
 - 驗收：`make test` 506 passed（新增首頁是儀表板、`/chat` 是問答、舊連結轉址）；`check_frontend.py` 148 項全過。
+
+## 文件來源顯示原文：PDF 原頁＋外框＋螢光（2026-11-01）✅
+- 起因：Elvis 希望文件回答（例如「鴻遠機械的合約，延遲交貨罰款怎麼算？」）直接顯示文件那一頁，並用螢光框出來，讓使用者更快掌握。
+- **定位** `backend/app/rag/pdfview.py`：用 docling 已帶的 `pypdfium2`（**沒有新增套件**）讀出頁面每個字的位置，把引用片段逐句（表格逐格）比對到頁面上（忽略空白與換行）。整段條文＋標題畫**外框**；與回答的雙字詞重疊 ≥ 50% 的句子塗**螢光**（都沒過門檻時標最相關的一句）。座標存成頁面比例（0～1），每個來源約 20 毫秒。
+- RAG 回答的 `Source` 多一個欄位 `view`（`{ratio, pages, boxes}`，放在最後，不影響既有位置參數）；找不到檔案、頁數不對或定位出錯時是 `None`，只記 log，回答照常。
+- **端點** `backend/app/api/docview.py`：`GET /api/docs/page?file=&page=` 回傳該頁灰階 PNG（2 倍解析度，約 200 KB，快取）；`GET /api/docs/file?name=` 開啟原始 PDF。檔名只接受 `data/` 底下真的存在的 PDF（白名單比對、只取檔名），`../../.env` 之類一律 404。
+- **問答頁**：文件來源直接顯示裁切後的原頁片段（外框＋螢光，用 CSS 百分比疊在圖片上，沒有 innerHTML）；點一下開整頁檢視器（圖例、自動捲到引用處、上一頁／下一頁、回到引用處、開啟原始 PDF、Esc 或點背景關閉）。找不到位置的來源維持原本的文字片段，加「看第 N 頁原文」按鈕。卡片裡的來源仍預設收合（既有檢查），寬螢幕右側面板展開。
+- 驗收：`backend/tests/test_docview.py` 9 項（外框範圍、跨行螢光、表格儲存格、找不到時不畫、白名單、真實 PDF、端點、定位失敗不影響回答）；`make test` 515 passed、`make test-db` 94 passed、`make test-llm` 34 passed；`check_frontend.py` **164 項全過**（新增 16 項，含檢視器翻頁與檔名 XSS）。真實系統問「鴻遠罰款」「加班費」「GEAR-M2-40T 規格」三題，9 個來源全部定位成功；截圖 `docs/screenshots/source_preview.png`、`source_viewer.png`。
