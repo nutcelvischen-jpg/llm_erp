@@ -110,7 +110,7 @@ local_llm/
 
 
 ## 實作現況：多頁介面（2026-10-31，以此為準）
-- 網頁仍是原生 HTML/CSS/JS（無框架、無 CDN），但分成四頁：`/` 問答（`index.html`）、`/dashboard` 儀表板、`/reports` 報表、`/about` 系統介紹。共用樣式與函式在 `web/ui.css`、`web/ui.js`（品牌設定 `BRAND`、導覽 `NAV`、`el()`、表格、圖表、SQL、CSV）；改品牌只改 `ui.js` 的 `BRAND`。
+- 網頁仍是原生 HTML/CSS/JS（無框架、無 CDN），但分成四頁：`/` 儀表板（首頁，`dashboard.html`；`/dashboard` 同頁）、`/chat` 問答（`index.html`；舊的 `/?q=` 會轉到 `/chat?q=`）、`/reports` 報表、`/about` 系統介紹。共用樣式與函式在 `web/ui.css`、`web/ui.js`（品牌設定 `BRAND`、導覽 `NAV`、`el()`、表格、圖表、SQL、CSV）；改品牌只改 `ui.js` 的 `BRAND`。
 - 儀表板與報表的 API 在 `api/reports.py`：`GET /api/dashboard`、`GET /api/reports/catalog`、`POST /api/reports/run`、`GET /api/docs`。**直接執行既定程式、不呼叫 LLM**；參數一樣經 `intent.confirm()` 驗證，稽核 route 記為 `report`。
 - 新增模板後，報表選單會自動出現（依 id 前綴分組：`sales_` 銷售、`ar_` 應收、`stock_` 庫存、`supplier_`／`purchase_` 採購）；儀表板的指標卡在 `reports.py` 的 `TILES`／`CHARTS` 設定。
 - 動態內容一律 `textContent`；`check_frontend.py` 含四頁的 XSS 檢查。

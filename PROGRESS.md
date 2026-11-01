@@ -319,3 +319,7 @@
   - `about.html`：三種用法、四種能力、運作流程圖（標示哪些是 AI、哪些是固定程式）、可信度 6 點、資料不外流（含即時系統狀態）、16 支報表與 20 份文件清單（動態）、使用技巧、限制、常見問題。
   - 問答頁：`/?q=問題` 自動提問（儀表板與報表「用問的」）；數字回答多「在報表中開啟」。
 - 驗收：`backend/tests/test_api_reports.py` 6 項＋1 項 db（真實儀表板無錯誤、每張卡片的報表連結都能執行、同頁金額一致）；`make test` 505 passed、`make test-db` 94 passed、`make test-llm` 34 passed；`check_frontend.py` **148 項全過**（新增 19 項：儀表板、報表表單與參數型別、網址帶條件自動查詢、介紹頁狀態與清單、各頁 XSS、`?q=`）。真實瀏覽器走過：儀表板 → 看明細 → 改條件 → 用問的 → 問答 → 在報表中開啟，無前端錯誤。截圖 `docs/screenshots/page_dashboard.png`、`page_reports.png`、`page_reports_chart.png`、`page_about.png`。
+
+## 首頁改成儀表板（2026-11-01）✅
+- `/` 改為儀表板（`/dashboard` 保留為同頁），問答頁移到 `/chat`；舊的 `/?q=問題` 連結 307 轉到 `/chat?q=問題`。導覽列、「用問的」連結、系統介紹頁、`scripts/demo_stories.py`（改開 `/chat`）、README、AGENTS、Demo 講稿與劇本同步更新。
+- 驗收：`make test` 506 passed（新增首頁是儀表板、`/chat` 是問答、舊連結轉址）；`check_frontend.py` 148 項全過。

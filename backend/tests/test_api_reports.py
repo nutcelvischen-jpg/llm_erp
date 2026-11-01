@@ -79,9 +79,16 @@ def test_dashboard_survives_partial_failure(fake, monkeypatch):
 
 
 def test_pages_served():
-    for path in ("/", "/dashboard", "/reports", "/about"):
+    for path in ("/", "/dashboard", "/chat", "/reports", "/about"):
         r = client.get(path)
         assert r.status_code == 200 and "<nav" in r.text, path
+    assert client.get("/").text == client.get("/dashboard").text and 'id="tiles"' in client.get("/").text   # 首頁是儀表板
+    assert 'id="input"' in client.get("/chat").text
+
+
+def test_old_root_question_links_redirect_to_chat():
+    r = client.get("/", params={"q": "台陽科技有哪些發票逾期"}, follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"].startswith("/chat?q=")
 
 
 @pytest.mark.db

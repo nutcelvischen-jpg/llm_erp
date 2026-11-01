@@ -646,7 +646,7 @@ showWelcome();
 renderToc();
 renderConversations();
 input.focus();
-// 從儀表板或報表頁「用問的」過來：/?q=問題
+// 從儀表板或報表頁「用問的」過來：/chat?q=問題
 const preset = new URLSearchParams(location.search).get("q");
 if (preset) { window.history.replaceState(null, "", location.pathname); ask(preset); }
 </script>

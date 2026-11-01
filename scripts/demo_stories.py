@@ -25,7 +25,7 @@ S = {
 }
 ap = argparse.ArgumentParser(description="現場示範劇本：依序提問並截圖")
 ap.add_argument("stories", nargs="*", metavar="劇本編號", help=f"可選 {'、'.join(S)}；不填跑全部")
-ap.add_argument("--url", default="http://localhost:8000/", help="網頁位址")
+ap.add_argument("--url", default="http://localhost:8000/", help="伺服器位址（問答頁在 /chat）")
 ap.add_argument("--out", default=str(Path(__file__).resolve().parents[1] / "data" / "demo_shots"), help="截圖資料夾")
 args = ap.parse_args()
 if bad := [k for k in args.stories if k not in S]:
@@ -44,7 +44,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     for k in only:
         pg = b.new_page(viewport={"width": 1440, "height": 900})
-        pg.goto(BASE)
+        pg.goto(BASE + "chat")
         print(f"\n劇本 {k}")
         for i, q in enumerate(S[k], 1):
             t = time.time()

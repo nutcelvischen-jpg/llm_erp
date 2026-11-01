@@ -604,7 +604,7 @@ with sync_playwright() as p:
     check(page.locator(".tile").count() == 2 and page.locator(".tile .value").first.inner_text().startswith("83,487,889"), "儀表板指標卡與千分位")
     check(page.locator(".topnav a[aria-current=page]").inner_text() == "儀表板" and page.locator(".topnav a").count() == 4, "導覽列標示目前頁面")
     check(page.locator(".tile").first.locator("a", has_text="看明細").get_attribute("href").startswith("/reports?t=sales_compare")
-          and page.locator(".tile").first.locator("a", has_text="用問的").get_attribute("href").startswith("/?q="), "指標卡連到報表與問答")
+          and page.locator(".tile").first.locator("a", has_text="用問的").get_attribute("href").startswith("/chat?q="), "指標卡連到報表與問答")
     page.wait_for_timeout(400)
     check(page.locator(".chart-card .chart").count() == 1 and page.evaluate("window.__xss") is None and page.locator(".tile img").count() == 0,
           "儀表板圖表與 XSS 防護")
@@ -652,7 +652,7 @@ with sync_playwright() as p:
     check(runs[-1]["params"] == {"customer": "台陽科技", "overdue_gt": 60} and runs[-1]["template_id"] == "ar_invoices", "送出的參數型別正確（數字不是字串）")
     check("t=ar_invoices" in page.url and "%E5%8F%B0%E9%99%BD" in page.url, "網址記住報表與條件（可加書籤）")
     check(page.locator("#result table tbody tr").count() == 1 and page.locator("#result .tag").count() == 2, "結果表格與條件標籤")
-    check(page.locator("#result .next a").get_attribute("href").startswith("/?q=") and page.locator("#result details summary").inner_text() == "查詢的 SQL",
+    check(page.locator("#result .next a").get_attribute("href").startswith("/chat?q=") and page.locator("#result details summary").inner_text() == "查詢的 SQL",
           "接著問連到問答、可展開 SQL")
     page.close()
     url = BASE + "reports?" + urlencode({"t": "ar_invoices", "p": json.dumps({"customer": "台陽科技", "overdue_gt": 60})})
@@ -674,7 +674,7 @@ with sync_playwright() as p:
     check(page.evaluate("window.__xss") is None and page.locator(".page img").count() == 0, "系統介紹的動態內容不會執行 HTML")
     page.close()
 
-    # 問答頁：從其他頁「用問的」過來（/?q=）會自動送出並清掉網址參數
+    # 問答頁：從其他頁「用問的」過來（/chat?q=）會自動送出並清掉網址參數
     page = browser.new_page(viewport={"width": 1300, "height": 900})
     page.route(BASE + "*", lambda r: r.fulfill(status=200, content_type="text/html; charset=utf-8", body=HTML))
     page.route("http://app.test/static/**", lambda r: r.fulfill(path=str(WEB / r.request.url.split("/static/")[1])))

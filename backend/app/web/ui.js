@@ -9,7 +9,7 @@ const BRAND = {
   color: "#0f4c81",
   palette: ["#0f4c81", "#2a9d8f", "#e9a23b", "#d1495b", "#7a5ea8", "#5b8def"],
 };
-const NAV = [["/dashboard", "儀表板"], ["/reports", "報表"], ["/", "問答"], ["/about", "系統介紹"]];
+const NAV = [["/", "儀表板", ["/", "/dashboard"]], ["/reports", "報表"], ["/chat", "問答"], ["/about", "系統介紹"]];   // [網址, 名稱, 也算這頁的路徑]
 
 // 建立節點：文字一律用 textContent，絕不使用 innerHTML
 function el(tag, props = {}, children = []) {
@@ -171,9 +171,9 @@ function applyBrand() {
   if (n) n.textContent = BRAND.name;
   if (t) t.textContent = BRAND.tagline;
   const nav = document.getElementById("topnav");
-  if (nav) nav.replaceChildren(...NAV.map(([href, label]) => el("a", { href, text: label, ...(location.pathname === href ? { "aria-current": "page" } : {}) })));
+  if (nav) nav.replaceChildren(...NAV.map(([href, label, paths = [href]]) => el("a", { href, text: label, ...(paths.includes(location.pathname) ? { "aria-current": "page" } : {}) })));
 }
 const fmtMoney = (v) => (v === null || v === undefined ? "-" : `${Math.round(v).toLocaleString("zh-TW")}`);
 const reportUrl = (templateId, params = {}) => `/reports?${new URLSearchParams({ t: templateId, p: JSON.stringify(params) })}`;
-const askUrl = (question) => `/?${new URLSearchParams({ q: question })}`;
+const askUrl = (question) => `/chat?${new URLSearchParams({ q: question })}`;
 const qs = (obj) => new URLSearchParams(Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== "")).toString();

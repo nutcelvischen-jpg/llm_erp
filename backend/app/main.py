@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
@@ -37,13 +37,21 @@ def _page(name: str) -> FileResponse:
 
 
 @app.get("/", include_in_schema=False)
-def index():
-    return _page("index.html")
+def home(request: Request):
+    # 首頁是儀表板；舊的「/?q=問題」連結轉到問答頁
+    if request.query_params.get("q"):
+        return RedirectResponse(f"/chat?{request.url.query}", status_code=307)
+    return _page("dashboard.html")
 
 
 @app.get("/dashboard", include_in_schema=False)
 def dashboard_page():
     return _page("dashboard.html")
+
+
+@app.get("/chat", include_in_schema=False)
+def chat_page():
+    return _page("index.html")
 
 
 @app.get("/reports", include_in_schema=False)
