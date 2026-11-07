@@ -12,7 +12,9 @@
 
 ## Demo 影片（約 2 分 15 秒，含旁白與字幕）
 
-[![點圖觀看 Demo 影片](data/demo_recordings/02_margin_drop.png)](https://nutcelvischen-jpg.github.io/llm_erp/demo.👉 **[點這裡線上觀看影片](https://nutcelvischen-jpg.github.io/llm_erp/demo.html)**（網頁內直接播放，含旁白與燒入字幕）。也可 [下載 mp4](data/demo_recordings/llm_erp_demo_narrated.mp4) 或 [SRT 字幕檔](data/demo_recordings/llm_erp_demo.srt)。o.srt)）
+[![點圖觀看 Demo 影片](data/demo_recordings/02_margin_drop.png)](https://nutcelvischen-jpg.github.io/llm_erp/demo.html)
+
+👉 **[點這裡線上觀看影片](https://nutcelvischen-jpg.github.io/llm_erp/demo.html)**（網頁內直接播放，含旁白與燒入字幕）。也可 [下載 mp4](data/demo_recordings/llm_erp_demo_narrated.mp4) 或 [SRT 字幕檔](data/demo_recordings/llm_erp_demo.srt)。
 
 影片依序示範（全程在地端執行，資料不外流）：
 
