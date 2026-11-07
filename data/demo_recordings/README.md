@@ -1,6 +1,11 @@
 # Demo 影片說明
 
-`llm_erp_demo.mp4`：約 86 秒、1440×900，由 `scripts/record_demo_auto.py` 自動操作瀏覽器錄製。
+- `llm_erp_demo_narrated.mp4`：**完整版**，約 134 秒、1440×900，含旁白（台灣女聲，Gemini TTS）與燒入字幕。
+- `llm_erp_demo.srt`：同一份字幕的獨立檔（可另行匯入剪輯軟體）。
+- `llm_erp_demo.mp4`：無旁白、無字幕的原始畫面。
+
+畫面由 `scripts/record_demo_auto.py` 自動操作瀏覽器錄製；旁白與字幕由 `scripts/make_demo_video.py` 合成
+（AI 思考的等待時間已壓縮，結果畫面會停住等旁白講完）。
 全程在地端執行（LM Studio + PostgreSQL + Qdrant），資料不外流；畫面中的數字都由公司既定的查詢程式
 在唯讀資料庫查得，AI 只負責理解問題與用白話說明結果。
 
@@ -22,13 +27,17 @@
 2. **數字可稽核**：回答中的數字都能在結果表與展開的 SQL 中找到。
 3. **文件問答附出處**：合約、SOP 的回答附檔名與頁碼，可回看 PDF 原頁。
 
-## 重新錄製
+## 重新錄製與合成
 
 ```bash
 make up && make llm-up && make dev      # /health 須回 "ok": true
-uv run --with playwright python scripts/record_demo_auto.py
-ffmpeg -i data/demo_recordings/llm_erp_demo.webm -c:v libx264 -pix_fmt yuv420p \
-  -movflags +faststart data/demo_recordings/llm_erp_demo.mp4 -y
+uv run --with playwright python scripts/record_demo_auto.py          # 錄畫面 + timeline.json
+uv run --with pillow python scripts/make_demo_video.py --key-file <OpenRouter 金鑰檔>   # 旁白 + 字幕 + 合成
 ```
+
+- 旁白文字寫在 `make_demo_video.py` 的 `NARRATION`；旁白裡的數字取自畫面，資料或日期變動後要同步修改。
+- 聲音可用 `--voice` 更換（女聲如 Kore、Sulafat、Zephyr、Leda），預設 Kore。語音逐句快取在 `_work/`，改文字只會重新產生有變動的句子。
+- 金鑰只在執行時讀取（或用環境變數 `OPENROUTER_API_KEY`），不會寫進程式碼或影片。
+- 需要 `ffmpeg`（`brew install ffmpeg`）。
 
 資料是示範用假資料，每題的數字會隨「今天」的日期略有不同。

@@ -16,3 +16,5 @@ ref_style.mp4
 data/video/
 data/demo_recordings/*.webm
 data/demo_recordings/raw_video/
+data/demo_recordings/_work/
+data/demo_recordings/timeline.json

@@ -4,8 +4,10 @@
 需先 make up、make llm-up、make dev（/health 回 ok: true）。
 輸出：data/demo_recordings/（已在 .gitignore 之外請自行決定是否提交）
 """
+import json
 import shutil
 import sys
+import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -58,6 +60,7 @@ def run_demo():
     shutil.rmtree(VIDEO_DIR, ignore_errors=True)
     VIDEO_DIR.mkdir(parents=True)
     failed = []
+    timeline = {}  # 各段相對於影片開頭的秒數，給 make_demo_video.py 對齊旁白用
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -67,13 +70,16 @@ def run_demo():
             record_video_dir=str(VIDEO_DIR),
             record_video_size={"width": 1440, "height": 900},
         )
+        t0 = time.monotonic()
         page = context.new_page()
+        now = lambda: round(time.monotonic() - t0, 2)
 
         print("=== 步驟 0：首頁儀表板 ===")
         page.goto(f"{BASE_URL}/")
         page.wait_for_timeout(2500)
         page.screenshot(path=str(OUT_DIR / "01_dashboard.png"))
         print("已截圖：01_dashboard.png")
+        timeline["01_dashboard"] = {"start": 0.0, "ready": now()}
 
         print("=== 步驟 1：進入問答頁面 ===")
         page.goto(f"{BASE_URL}/chat")
@@ -85,11 +91,13 @@ def run_demo():
                 page.fill("#input", s["q"])
                 page.wait_for_timeout(400)
                 page.press("#input", "Enter")
+                sent = now()
                 wait_answer(page)
                 page.wait_for_timeout(2500)  # 等圖表動畫
                 if s["show_sql"] and not open_sql(page):
                     print("  （此題沒有 SQL 區塊，略過展開）")
                 page.screenshot(path=str(OUT_DIR / f"{s['id']}.png"))
+                timeline[s["id"]] = {"start": round(sent - 1.2, 2), "sent": sent, "ready": now()}
                 print(f"已截圖：{s['id']}.png")
             except Exception as e:  # 單題失敗不中斷整段錄影
                 failed.append(s["id"])
@@ -97,6 +105,7 @@ def run_demo():
                 page.screenshot(path=str(OUT_DIR / f"{s['id']}_FAILED.png"))
             page.wait_for_timeout(1500)
 
+        timeline["_end"] = now()
         video = page.video
         page.close()
         context.close()  # 關閉後影片才會寫完
@@ -107,6 +116,7 @@ def run_demo():
             shutil.move(video.path(), str(target))
             print(f"\n示範影片錄製完成：{target}")
 
+    (OUT_DIR / "timeline.json").write_text(json.dumps(timeline, indent=2), encoding="utf-8")
     shutil.rmtree(VIDEO_DIR, ignore_errors=True)
     if failed:
         print("未成功的題目：", ", ".join(failed))
