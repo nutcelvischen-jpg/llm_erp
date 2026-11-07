@@ -14,3 +14,5 @@ data/demo_shots/
 OPR-KEY.txt
 ref_style.mp4
 data/video/
+data/demo_recordings/*.webm
+data/demo_recordings/raw_video/
