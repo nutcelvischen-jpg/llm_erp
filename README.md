@@ -10,6 +10,39 @@
 
 ---
 
+## Demo 影片（約 2 分 15 秒，含旁白與字幕）
+
+[![點圖觀看 Demo 影片](data/demo_recordings/02_margin_drop.png)](data/demo_recordings/llm_erp_demo_narrated.mp4)
+
+👉 **[點這裡觀看影片](data/demo_recordings/llm_erp_demo_narrated.mp4)**（GitHub 會直接在頁面內播放；字幕已燒入畫面，另附 [SRT 字幕檔](data/demo_recordings/llm_erp_demo.srt)）
+
+影片依序示範（全程在地端執行，資料不外流）：
+
+| # | 提問 | 看點 |
+|---|---|---|
+| 1 | （儀表板） | 指標卡與圖表，不經 AI，直接讀資料庫 |
+| 2 | 今年毛利跟去年同期比怎樣？哪個客戶掉最多？ | 毛利少 6.0%，鴻遠機械掉最多；可展開 SQL 稽核 |
+| 3 | 鴻遠機械最近 12 個月每個月的營收 | 自動折線圖，6 月起明顯下滑 |
+| 4 | 鴻遠機械今年營收多少？依合約拿得到折讓嗎？ | ERP 數字＋合約條文合併判斷，附 PDF 頁碼出處 |
+| 5 | 哪些料號超過 180 天沒動？壓了多少錢？ | 呆滯庫存 12 個料號、約 290 萬元 |
+| 6 | 依目前待出貨訂單，哪些料號會缺料？ | 缺料預警與建議採購量 |
+| 7 | 應收帳款的帳齡分佈 | 帳齡長條圖，逾期 61 天以上需優先追款 |
+
+<table>
+<tr>
+<td><a href="data/demo_recordings/04_contract_merging.png"><img src="data/demo_recordings/04_contract_merging.png" alt="ERP 數字加合約條文"></a><br><sub>ERP 數字 + 合約條文</sub></td>
+<td><a href="data/demo_recordings/03_revenue_trend.png"><img src="data/demo_recordings/03_revenue_trend.png" alt="營收趨勢圖"></a><br><sub>自動產生趨勢圖</sub></td>
+</tr>
+<tr>
+<td><a href="data/demo_recordings/05_dead_stock.png"><img src="data/demo_recordings/05_dead_stock.png" alt="呆滯庫存"></a><br><sub>呆滯庫存診斷</sub></td>
+<td><a href="data/demo_recordings/07_ar_aging.png"><img src="data/demo_recordings/07_ar_aging.png" alt="應收帳齡"></a><br><sub>應收帳款帳齡</sub></td>
+</tr>
+</table>
+
+更多說明與重新錄製方式見 [`data/demo_recordings/README.md`](data/demo_recordings/README.md)。
+
+---
+
 ## 10 分鐘從零到 Demo
 
 前提：模型已下載（第一次下載主模型約 20 GB、reranker 約 2.2 GB、Docling 版面模型約 1 GB，需要網路）。
