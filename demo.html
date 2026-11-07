@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>地端 LLM × ERP Demo 影片</title>
+<style>
+  body { font-family: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; margin: 0; background: #f4f6fa; color: #1b2433; line-height: 1.7; }
+  header { background: #0f4c81; color: #fff; padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: #dbe6f3; font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  video { width: 100%; border-radius: 10px; background: #000; box-shadow: 0 4px 18px rgba(0,0,0,.18); }
+  video { color: #fff; }
+  video a { color: #9ec5ff; }
+  h2 { font-size: 18px; margin-top: 32px; }
+  table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid #e3e8f0; text-align: left; font-size: 14px; vertical-align: top; }
+  th { background: #e8eef7; }
+  .links a { margin-right: 16px; color: #0f4c81; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .shots img { width: 100%; border-radius: 8px; border: 1px solid #d5dce8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>地端 LLM × ERP：Demo 影片</h1>
+  <p>用中文問 ERP 數字與合約文件｜全程在公司內網執行，資料不外流</p>
+</header>
+<main>
+  <video controls preload="metadata" poster="data/demo_recordings/02_margin_drop.png">
+    <source src="data/demo_recordings/llm_erp_demo_narrated.mp4" type="video/mp4">
+    你的瀏覽器不支援影片播放，請<a href="data/demo_recordings/llm_erp_demo_narrated.mp4">下載影片</a>。
+  </video>
+  <p class="links">
+    約 2 分 15 秒，含旁白與字幕
+    <a href="data/demo_recordings/llm_erp_demo_narrated.mp4" download>下載影片</a>
+    <a href="data/demo_recordings/llm_erp_demo.srt" download>下載字幕（SRT）</a>
+    <a href="https://github.com/nutcelvischen-jpg/llm_erp">回到專案首頁</a>
+  </p>
+
+  <h2>影片內容</h2>
+  <table>
+    <tr><th>#</th><th>提問</th><th>看點</th></tr>
+    <tr><td>1</td><td>（儀表板）</td><td>指標卡與圖表，不經 AI，直接讀資料庫</td></tr>
+    <tr><td>2</td><td>今年毛利跟去年同期比怎樣？哪個客戶掉最多？</td><td>毛利少 6.0%，鴻遠機械掉最多；可展開 SQL 稽核</td></tr>
+    <tr><td>3</td><td>鴻遠機械最近 12 個月每個月的營收</td><td>自動折線圖，6 月起明顯下滑</td></tr>
+    <tr><td>4</td><td>鴻遠機械今年營收多少？依合約拿得到折讓嗎？</td><td>ERP 數字＋合約條文合併判斷，附 PDF 頁碼出處</td></tr>
+    <tr><td>5</td><td>哪些料號超過 180 天沒動？壓了多少錢？</td><td>呆滯庫存 12 個料號、約 290 萬元</td></tr>
+    <tr><td>6</td><td>依目前待出貨訂單，哪些料號會缺料？</td><td>缺料預警與建議採購量</td></tr>
+    <tr><td>7</td><td>應收帳款的帳齡分佈</td><td>帳齡長條圖，逾期 61 天以上需優先追款</td></tr>
+  </table>
+
+  <h2>畫面截圖</h2>
+  <div class="shots">
+    <a href="data/demo_recordings/02_margin_drop.png"><img src="data/demo_recordings/02_margin_drop.png" alt="毛利同期比較" loading="lazy"></a>
+    <a href="data/demo_recordings/04_contract_merging.png"><img src="data/demo_recordings/04_contract_merging.png" alt="ERP 數字加合約條文" loading="lazy"></a>
+    <a href="data/demo_recordings/03_revenue_trend.png"><img src="data/demo_recordings/03_revenue_trend.png" alt="營收趨勢圖" loading="lazy"></a>
+    <a href="data/demo_recordings/05_dead_stock.png"><img src="data/demo_recordings/05_dead_stock.png" alt="呆滯庫存" loading="lazy"></a>
+    <a href="data/demo_recordings/06_shortage_alert.png"><img src="data/demo_recordings/06_shortage_alert.png" alt="缺料預警" loading="lazy"></a>
+    <a href="data/demo_recordings/07_ar_aging.png"><img src="data/demo_recordings/07_ar_aging.png" alt="應收帳齡" loading="lazy"></a>
+  </div>
+</main>
+</body>
+</html>
