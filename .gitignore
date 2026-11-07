@@ -10,3 +10,7 @@ models/
 *.egg-info/
 data/seed/out/
 data/demo_shots/
+.env.video
+OPR-KEY.txt
+ref_style.mp4
+data/video/
